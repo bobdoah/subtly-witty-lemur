@@ -11,10 +11,10 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-func readTcx(filepath string) error {
+func readTcx(filepath string) (*tcx.TCXDB, error) {
 	db, err := tcx.ReadFile(filepath)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	nacts := len(db.Acts.Act)
 	if nacts > 0 {
@@ -22,17 +22,21 @@ func readTcx(filepath string) error {
 		fmt.Printf("id: %s sport: %s\n", act.Id.Format(time.RFC3339), act.Sport)
 	}
 
-	return nil
+	return db, nil
+}
+
+func isCommute(db *tcx.TCXDB, homePoints map[string]geo.Point, workPoints map[string]geo.Point) bool {
+	return ((geo.StartIsCloseToOneOf(db, homePoints) && geo.EndIsCloseToOneOf(db, workPoints)) ||
+		(geo.StartIsCloseToOneOf(db, workPoints) && geo.EndIsCloseToOneOf(db, homePoints)))
 }
 
 func printLatLons(postcodes []string) error {
 	for _, postcode := range postcodes {
-		coords := geo.Point{}
-		err := geo.GetPointFromPostcode(postcode, &coords)
+		point, err := geo.GetPointFromPostcode(postcode)
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Postcode: %s is at lat: %f, lon: %f\n", postcode, coords.Latitude, coords.Longitude)
+		fmt.Printf("Postcode: %s is at lat: %f, lon: %f\n", postcode, point.Latitude, point.Longitude)
 	}
 	return nil
 }
@@ -54,11 +58,23 @@ func main() {
 		Action: func(c *cli.Context) error {
 			if c.NArg() > 0 {
 				var i int
+				homePoints, err := geo.GetPointsFromPostcodes(c.StringSlice("home"))
+				workPoints, err := geo.GetPointsFromPostcodes(c.StringSlice("work"))
+				if err != nil {
+					return err
+				}
 				for i = 0; i < c.Args().Len(); i++ {
-					readTcx(c.Args().Get(i))
+					db, err := readTcx(c.Args().Get(i))
+					activity := db.Acts.Act[0]
+					if err != nil {
+						return err
+					}
+					if isCommute(db, homePoints, workPoints) {
+						fmt.Printf("id: %s sport: %s is a commute\n", activity.Id.Format(time.RFC3339), activity.Sport)
+					}
 				}
 			}
-			return printLatLons(c.StringSlice("home"))
+			return nil
 		},
 	}
 
