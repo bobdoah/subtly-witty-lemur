@@ -29,8 +29,10 @@ func Authenticate(c *cli.Context) error {
 		CallbackURL:            fmt.Sprintf("http://localhost:%d/exchange_token", port),
 		RequestClientGenerator: nil,
 	}
+	fmt.Printf("Client ID: %d\nClient Secret: %s\n", strava.ClientId, strava.ClientSecret)
 
 	http.HandleFunc("/", indexHandler)
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
 
 	path, err := authenticator.CallbackPath()
 	if err != nil {
@@ -47,8 +49,8 @@ func Authenticate(c *cli.Context) error {
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
 	// you should make this a template in your real application
-	fmt.Fprintf(w, `<a href="%s">`, authenticator.AuthorizationURL("state1", strava.Permissions.Public, true))
-	fmt.Fprint(w, `<img src="http://strava.github.io/api/images/ConnectWithStrava.png" />`)
+	fmt.Fprintf(w, `<a href="%s">`, authenticator.AuthorizationURL("state1", strava.Permissions.ReadAll, true))
+	fmt.Fprint(w, `<img src="./static/btn_strava_connectwith_orange.png" />`)
 	fmt.Fprint(w, `</a>`)
 }
 

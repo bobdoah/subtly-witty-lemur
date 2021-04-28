@@ -71,11 +71,13 @@ func main() {
 						Name:        "client-id",
 						Usage:       "Client ID for strava api",
 						Destination: &strava.ClientId,
+						Required:    true,
 					},
 					&cli.StringFlag{
 						Name:        "client-secret",
 						Usage:       "Client secret for strava api",
 						Destination: &strava.ClientSecret,
+						Required:    true,
 					},
 				},
 				Action: stravautils.Authenticate,
