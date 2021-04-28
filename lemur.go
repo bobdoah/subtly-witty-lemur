@@ -125,13 +125,19 @@ func main() {
 					if isCommute(db, homePoints, workPoints) {
 						fmt.Printf("id: %s sport: %s is a commute\n", activity.Id.Format(time.RFC3339), activity.Sport)
 					}
-					activitySummaries, err := stravautils.GetActivityForTime(state.AuthState.Strava.AccessToken, activity.Laps[0].Trk.Pt[0].Time)
+					startTime := activity.Laps[0].Trk.Pt[0].Time
+					activitySummaries, err := stravautils.GetActivityForTime(state.AuthState.Strava.AccessToken, startTime)
 					if err != nil {
 						return err
 					}
 					for _, activitySummary := range activitySummaries {
 						fmt.Printf("Existing Strava activity, id: %d, name: %s\n", activitySummary.Id, activitySummary.Name)
 					}
+					calendarItem, err := garminconnect.GetCalenderItemForTime(startTime)
+					if err != nil {
+						return err
+					}
+					fmt.Printf("Existing Garmin activity, id: %v, title: %s\n", calendarItem.ID, calendarItem.Title)
 				}
 			}
 			return nil

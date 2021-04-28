@@ -14,9 +14,15 @@ func init() {
 
 // Authenticate with Garmin Connect
 func Authenticate(c *cli.Context) error {
+	state.LoadState()
+
 	state.AuthState.Garmin.SetOptions(connect.Credentials(
 		c.String("email"),
 		c.String("password"),
 	))
-	return state.AuthState.Garmin.Authenticate()
+	err := state.AuthState.Garmin.Authenticate()
+	if err == nil {
+		state.StoreState()
+	}
+	return err
 }

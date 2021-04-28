@@ -14,6 +14,8 @@ var authenticator *strava.OAuthAuthenticator
 
 //Authenticate completes the OAuth exchange for a given athlete
 func Authenticate(c *cli.Context) error {
+	state.LoadState()
+
 	port := c.Int("port")
 	authenticator = &strava.OAuthAuthenticator{
 		CallbackURL:            fmt.Sprintf("http://localhost:%d/exchange_token", port),
