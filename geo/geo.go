@@ -1,12 +1,13 @@
 package geo
 
 import (
-	"fmt"
 	"math"
 	"strconv"
 	"time"
 
 	"github.com/philhofer/tcx"
+
+	"github.com/bobdoah/subtly-witty-lemur/logger"
 )
 
 const (
@@ -43,7 +44,7 @@ func Distance(lat1 float64, lon1 float64, lat2 float64, lon2 float64) float64 {
 func StartIsCloseToOneOf(tcxdb *tcx.TCXDB, points map[string]Point) bool {
 	activity := tcxdb.Acts.Act[0]
 	trackpoint := activity.Laps[0].Trk.Pt[0]
-	fmt.Printf("Activity %s, first trackpoint Latitude %f, Longitude %f\n", activity.Id.Format(time.RFC3339), trackpoint.Lat, trackpoint.Long)
+	logger.DebugLogger.Printf("Activity %s, first trackpoint Latitude %f, Longitude %f\n", activity.Id.Format(time.RFC3339), trackpoint.Lat, trackpoint.Long)
 	return TrackpointIsCloseToOneOf(trackpoint, points)
 }
 
@@ -53,7 +54,7 @@ func EndIsCloseToOneOf(tcxdb *tcx.TCXDB, points map[string]Point) bool {
 	laps := activity.Laps
 	lastLapTrackpoints := laps[len(laps)-1].Trk.Pt
 	lastTrackpoint := lastLapTrackpoints[len(lastLapTrackpoints)-1]
-	fmt.Printf("Activity %s, last trackpoint Latitude %f, Longitude %f\n", activity.Id.Format(time.RFC3339), lastTrackpoint.Lat, lastTrackpoint.Long)
+	logger.DebugLogger.Printf("Activity %s, last trackpoint Latitude %f, Longitude %f\n", activity.Id.Format(time.RFC3339), lastTrackpoint.Lat, lastTrackpoint.Long)
 	return TrackpointIsCloseToOneOf(lastTrackpoint, points)
 
 }
@@ -64,7 +65,7 @@ func TrackpointIsCloseToOneOf(trackpoint tcx.Trackpoint, points map[string]Point
 	for postcode, point := range points {
 		dist := Distance(trackpoint.Lat, trackpoint.Long, point.Latitude, point.Longitude)
 		if dist < closeTo {
-			fmt.Printf("Trackpoint is less than %skm from %s\n", strconv.FormatFloat(closeTo, 'f', -1, 64), postcode)
+			logger.DebugLogger.Printf("Trackpoint is less than %skm from %s\n", strconv.FormatFloat(closeTo, 'f', -1, 64), postcode)
 			return true
 		}
 	}

@@ -8,6 +8,7 @@ import (
 
 	"github.com/bobdoah/subtly-witty-lemur/garminconnect"
 	"github.com/bobdoah/subtly-witty-lemur/geo"
+	"github.com/bobdoah/subtly-witty-lemur/logger"
 	"github.com/bobdoah/subtly-witty-lemur/state"
 	"github.com/bobdoah/subtly-witty-lemur/stravautils"
 	"github.com/philhofer/tcx"
@@ -23,7 +24,7 @@ func readTcx(filepath string) (*tcx.TCXDB, error) {
 	nacts := len(db.Acts.Act)
 	if nacts > 0 {
 		act := db.Acts.Act[0]
-		fmt.Printf("id: %s sport: %s\n", act.Id.Format(time.RFC3339), act.Sport)
+		logger.DebugLogger.Printf("id: %s sport: %s\n", act.Id.Format(time.RFC3339), act.Sport)
 	}
 
 	return db, nil
@@ -40,7 +41,7 @@ func printLatLons(postcodes []string) error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Postcode: %s is at lat: %f, lon: %f\n", postcode, point.Latitude, point.Longitude)
+		logger.DebugLogger.Printf("Postcode: %s is at lat: %f, lon: %f\n", postcode, point.Latitude, point.Longitude)
 	}
 	return nil
 }
@@ -63,6 +64,10 @@ func main() {
 				Usage:       "State file for Strava API",
 				Destination: &state.StateFile,
 				Value:       state.Filename(),
+			},
+			&cli.BoolFlag{
+				Name:  "debug",
+				Value: false,
 			},
 		},
 		Commands: []*cli.Command{
@@ -102,6 +107,33 @@ func main() {
 					},
 				},
 				Action: garminconnect.Authenticate,
+			},
+			&cli.Command{
+				Name: "summary",
+				Action: func(c *cli.Context) error {
+					if c.NArg() > 0 {
+						var i int
+						homePoints, err := geo.GetPointsFromPostcodes(c.StringSlice("home"))
+						if err != nil {
+							return err
+						}
+						workPoints, err := geo.GetPointsFromPostcodes(c.StringSlice("work"))
+						if err != nil {
+							return err
+						}
+						for i = 0; i < c.Args().Len(); i++ {
+							db, err := readTcx(c.Args().Get(i))
+							activity := db.Acts.Act[0]
+							if err != nil {
+								return err
+							}
+							if isCommute(db, homePoints, workPoints) {
+								fmt.Printf("id: %s sport: %s is a commute\n", activity.Id.Format(time.RFC3339), activity.Sport)
+							}
+						}
+					}
+					return nil
+				},
 			},
 		},
 		Action: func(c *cli.Context) error {
