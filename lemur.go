@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/bobdoah/subtly-witty-lemur/garminconnect"
 	"github.com/bobdoah/subtly-witty-lemur/geo"
 	"github.com/bobdoah/subtly-witty-lemur/state"
 	"github.com/bobdoah/subtly-witty-lemur/stravautils"
@@ -87,6 +88,20 @@ func main() {
 					},
 				},
 				Action: stravautils.Authenticate,
+			},
+			&cli.Command{
+				Name: "authenticate-with-garmin-connect",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "email",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:     "password",
+						Required: true,
+					},
+				},
+				Action: garminconnect.Authenticate,
 			},
 		},
 		Action: func(c *cli.Context) error {
