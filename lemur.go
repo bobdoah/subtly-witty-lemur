@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/bobdoah/subtly-witty-lemur/geo"
+	"github.com/bobdoah/subtly-witty-lemur/strava"
 	"github.com/philhofer/tcx"
 	"github.com/urfave/cli/v2"
 )
@@ -42,6 +43,8 @@ func printLatLons(postcodes []string) error {
 }
 
 func main() {
+	var clientID, clientSecret string
+
 	app := &cli.App{
 		Name:  "upload-tcx",
 		Usage: "upload a tcx file to somewhere",
@@ -53,6 +56,18 @@ func main() {
 			&cli.StringSliceFlag{
 				Name:  "work",
 				Usage: "Postcodes of work starting points",
+			},
+			&cli.StringFlag{
+				Name:        "client-id",
+				Usage:       "Client ID for strava api",
+				Required:    true,
+				Destination: &clientId,
+			},
+			&cli.StringFlag{
+				Name:        "client-secret",
+				Usage:       "Client secret for strava api",
+				Required:    true,
+				Destination: &clientSecret,
 			},
 		},
 		Action: func(c *cli.Context) error {
@@ -71,6 +86,13 @@ func main() {
 					}
 					if isCommute(db, homePoints, workPoints) {
 						fmt.Printf("id: %s sport: %s is a commute\n", activity.Id.Format(time.RFC3339), activity.Sport)
+					}
+					activitySummaries, err := strava.GetActivityForTime(accessToken, activity.Id)
+					if err != nil {
+						return err
+					}
+					for _, activitySummary := range activitySummaries {
+						fmt.Printf("Existing Strava activity, id: %d, name: %s\n", activitySummary.Id, activitySummary.Name)
 					}
 				}
 			}
