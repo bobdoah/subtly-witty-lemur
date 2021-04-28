@@ -3,18 +3,28 @@ package strava
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"log"
 	"net/http"
+	"os"
+	"path"
 
 	"github.com/strava/go.strava"
+	"github.com/urfave/cli/v2"
 )
 
 const port = 8080
 
 var authenticator *strava.OAuthAuthenticator
-var auth *strava.AuthorizationResponse
+
+// Auth contains the authentication response
+var Auth *strava.AuthorizationResponse
+
+// StateFile is the path of the statefile
+var StateFile string
 
 //Authenticate completes the OAuth exchange for a given athlete
-func Authenticate(clientID string, clientSecret string) error {
+func Authenticate(c *cli.Context) error {
 	authenticator = &strava.OAuthAuthenticator{
 		CallbackURL:            fmt.Sprintf("http://localhost:%d/exchange_token", port),
 		RequestClientGenerator: nil,
@@ -50,6 +60,9 @@ func oAuthSuccess(auth *strava.AuthorizationResponse, w http.ResponseWriter, r *
 	fmt.Fprintf(w, "The Authenticated Athlete (you):\n")
 	content, _ := json.MarshalIndent(auth.Athlete, "", " ")
 	fmt.Fprint(w, string(content))
+	Auth = auth
+	storeState()
+
 }
 
 func oAuthFailure(err error, w http.ResponseWriter, r *http.Request) {
@@ -67,5 +80,41 @@ func oAuthFailure(err error, w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "There was some sort of server error, try again to see if the problem continues")
 	} else {
 		fmt.Fprint(w, err)
+	}
+}
+
+// StateFilename returns the path to the statefile name
+func StateFilename() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		log.Fatalf("Could not detect home directory: %s", err.Error())
+	}
+
+	return path.Join(home, ".subtly-witty-lemur.json")
+}
+
+// LoadState loads the auth state from the statefile
+func LoadState() {
+	data, err := ioutil.ReadFile(StateFile)
+	if err != nil {
+		log.Printf("Could not open state file: %s", err.Error())
+		return
+	}
+
+	err = json.Unmarshal(data, Auth)
+	if err != nil {
+		log.Fatalf("Could not unmarshal state: %s", err.Error())
+	}
+}
+
+func storeState() {
+	b, err := json.MarshalIndent(Auth, "", "  ")
+	if err != nil {
+		log.Fatalf("Could not marshal state: %s", err.Error())
+	}
+
+	err = ioutil.WriteFile(StateFile, b, 0600)
+	if err != nil {
+		log.Fatalf("Could not write state file: %s", err.Error())
 	}
 }

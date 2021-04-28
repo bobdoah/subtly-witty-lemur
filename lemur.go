@@ -43,8 +43,6 @@ func printLatLons(postcodes []string) error {
 }
 
 func main() {
-	var clientID, clientSecret string
-
 	app := &cli.App{
 		Name:  "upload-tcx",
 		Usage: "upload a tcx file to somewhere",
@@ -58,17 +56,29 @@ func main() {
 				Usage: "Postcodes of work starting points",
 			},
 			&cli.StringFlag{
-				Name:        "client-id",
-				Usage:       "Client ID for strava api",
-				Required:    true,
-				Destination: &clientId,
+				Name:        "state-file",
+				Usage:       "State file for Strava API",
+				Destination: &strava.StateFile,
+				Value:       strava.StateFilename(),
 			},
-			&cli.StringFlag{
-				Name:        "client-secret",
-				Usage:       "Client secret for strava api",
-				Required:    true,
-				Destination: &clientSecret,
+		},
+		Commands: []*cli.Command{
+			&cli.Command{
+				Name: "authenticate-with-strava",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:        "client-id",
+						Usage:       "Client ID for strava api",
+						Destination: &strava.ClientId,
+					},
+					&cli.StringFlag{
+						Name:        "client-secret",
+						Usage:       "Client secret for strava api",
+						Destination: &strava.ClientSecret,
+					},
+				},
 			},
+			Action: strava.Authenticate,
 		},
 		Action: func(c *cli.Context) error {
 			if c.NArg() > 0 {
