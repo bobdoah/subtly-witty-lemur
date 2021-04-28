@@ -29,7 +29,6 @@ func Authenticate(c *cli.Context) error {
 		CallbackURL:            fmt.Sprintf("http://localhost:%d/exchange_token", port),
 		RequestClientGenerator: nil,
 	}
-	fmt.Printf("Client ID: %d\nClient Secret: %s\n", strava.ClientId, strava.ClientSecret)
 
 	http.HandleFunc("/", indexHandler)
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
@@ -49,19 +48,13 @@ func Authenticate(c *cli.Context) error {
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
 	// you should make this a template in your real application
-	fmt.Fprintf(w, `<a href="%s">`, authenticator.AuthorizationURL("state1", strava.Permissions.ReadAll, true))
+	fmt.Fprintf(w, `<a href="%s">`, authenticator.AuthorizationURL("state1", strava.Permissions.ActivityReadAll, true))
 	fmt.Fprint(w, `<img src="./static/btn_strava_connectwith_orange.png" />`)
 	fmt.Fprint(w, `</a>`)
 }
 
 func oAuthSuccess(auth *strava.AuthorizationResponse, w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "SUCCESS:\nAt this point you can use this information to create a new user or link the account to one of your existing users\n")
-	fmt.Fprintf(w, "State: %s\n\n", auth.State)
-	fmt.Fprintf(w, "Access Token: %s\n\n", auth.AccessToken)
-
-	fmt.Fprintf(w, "The Authenticated Athlete (you):\n")
-	content, _ := json.MarshalIndent(auth.Athlete, "", " ")
-	fmt.Fprint(w, string(content))
+	fmt.Fprintf(w, "Successfully authorized")
 	Auth = auth
 	storeState()
 
