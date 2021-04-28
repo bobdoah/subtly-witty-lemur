@@ -1,8 +1,7 @@
 package geo
 
 import (
-	"fmt"
-
+	"github.com/bobdoah/subtly-witty-lemur/logger"
 	"github.com/go-resty/resty/v2"
 )
 
@@ -31,7 +30,7 @@ func GetPointsFromPostcodes(postcodes []string) (map[string]Point, error) {
 	points := make(map[string]Point)
 	for _, postcode := range postcodes {
 		point, err := GetPointFromPostcode(postcode)
-		fmt.Printf("Postcode %s, point is Latitude: %f, Longitude %f\n", postcode, point.Latitude, point.Longitude)
+		logger.GetLogger().Printf("Postcode %s, point is Latitude: %f, Longitude %f\n", postcode, point.Latitude, point.Longitude)
 		if err != nil {
 			return points, err
 		}

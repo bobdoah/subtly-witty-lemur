@@ -24,7 +24,7 @@ func readTcx(filepath string) (*tcx.TCXDB, error) {
 	nacts := len(db.Acts.Act)
 	if nacts > 0 {
 		act := db.Acts.Act[0]
-		logger.DebugLogger.Printf("id: %s sport: %s\n", act.Id.Format(time.RFC3339), act.Sport)
+		logger.GetLogger().Printf("id: %s sport: %s\n", act.Id.Format(time.RFC3339), act.Sport)
 	}
 
 	return db, nil
@@ -41,7 +41,7 @@ func printLatLons(postcodes []string) error {
 		if err != nil {
 			return err
 		}
-		logger.DebugLogger.Printf("Postcode: %s is at lat: %f, lon: %f\n", postcode, point.Latitude, point.Longitude)
+		logger.GetLogger().Printf("Postcode: %s is at lat: %f, lon: %f\n", postcode, point.Latitude, point.Longitude)
 	}
 	return nil
 }
@@ -66,8 +66,9 @@ func main() {
 				Value:       state.Filename(),
 			},
 			&cli.BoolFlag{
-				Name:  "debug",
-				Value: false,
+				Name:        "debug",
+				Value:       false,
+				Destination: &logger.Enabled,
 			},
 		},
 		Commands: []*cli.Command{

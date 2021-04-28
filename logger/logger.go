@@ -3,6 +3,7 @@ package logger
 import (
 	"log"
 	"os"
+	"sync"
 )
 
 // Logger is a logging interface
@@ -15,11 +16,18 @@ type discardLog struct{}
 func (*discardLog) Printf(format string, v ...interface{}) {
 }
 
-// DebugLogger is a logger for print debug statements
-var DebugLogger Logger = &discardLog{}
+var logger Logger = &discardLog{}
 
-func debugLogger(enable bool) {
-	if enable {
-		DebugLogger = log.New(os.Stderr, "", log.Ldate|log.Ltime|log.Lmicroseconds|log.Lshortfile)
-	}
+// Enabled is if the debug logger is enabled
+var Enabled bool
+var once sync.Once
+
+// GetLogger provides the instance of the debug logger
+func GetLogger() Logger {
+	once.Do(func() {
+		if Enabled {
+			logger = log.New(os.Stderr, "", log.Ldate|log.Ltime|log.Lmicroseconds|log.Lshortfile)
+		}
+	})
+	return logger
 }
