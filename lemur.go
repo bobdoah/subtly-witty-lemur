@@ -79,6 +79,11 @@ func main() {
 						Destination: &strava.ClientSecret,
 						Required:    true,
 					},
+					&cli.IntFlag{
+						Name:  "port",
+						Usage: "port to bind local http server to",
+						Value: 8080,
+					},
 				},
 				Action: stravautils.Authenticate,
 			},
@@ -86,7 +91,11 @@ func main() {
 		Action: func(c *cli.Context) error {
 			if c.NArg() > 0 {
 				var i int
+				stravautils.LoadState()
 				homePoints, err := geo.GetPointsFromPostcodes(c.StringSlice("home"))
+				if err != nil {
+					return err
+				}
 				workPoints, err := geo.GetPointsFromPostcodes(c.StringSlice("work"))
 				if err != nil {
 					return err
@@ -100,7 +109,7 @@ func main() {
 					if isCommute(db, homePoints, workPoints) {
 						fmt.Printf("id: %s sport: %s is a commute\n", activity.Id.Format(time.RFC3339), activity.Sport)
 					}
-					activitySummaries, err := stravautils.GetActivityForTime(stravautils.Auth.AccessToken, activity.Id)
+					activitySummaries, err := stravautils.GetActivityForTime(stravautils.Auth.AccessToken, activity.Laps[0].Trk.Pt[0].Time)
 					if err != nil {
 						return err
 					}
@@ -115,6 +124,6 @@ func main() {
 
 	err := app.Run(os.Args)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("%s", err.Error())
 	}
 }

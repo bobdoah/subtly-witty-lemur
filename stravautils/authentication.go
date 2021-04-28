@@ -13,8 +13,6 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-const port = 8080
-
 var authenticator *strava.OAuthAuthenticator
 
 // Auth contains the authentication response
@@ -25,6 +23,7 @@ var StateFile string
 
 //Authenticate completes the OAuth exchange for a given athlete
 func Authenticate(c *cli.Context) error {
+	port := c.Int("port")
 	authenticator = &strava.OAuthAuthenticator{
 		CallbackURL:            fmt.Sprintf("http://localhost:%d/exchange_token", port),
 		RequestClientGenerator: nil,
@@ -57,7 +56,6 @@ func oAuthSuccess(auth *strava.AuthorizationResponse, w http.ResponseWriter, r *
 	fmt.Fprintf(w, "Successfully authorized")
 	Auth = auth
 	storeState()
-
 }
 
 func oAuthFailure(err error, w http.ResponseWriter, r *http.Request) {
@@ -96,7 +94,7 @@ func LoadState() {
 		return
 	}
 
-	err = json.Unmarshal(data, Auth)
+	err = json.Unmarshal(data, &Auth)
 	if err != nil {
 		log.Fatalf("Could not unmarshal state: %s", err.Error())
 	}
