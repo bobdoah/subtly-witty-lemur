@@ -22,7 +22,7 @@ func GetCalenderItemForTime(startTime time.Time) (*connect.CalendarItem, error) 
 	}
 	for _, calendarItem := range calendar.CalendarItems {
 		startTime := calendarItem.StartTimestampLocal
-		fmt.Printf("Activity %v, start time %v", calendarItem.ID, startTime)
+		fmt.Printf("Activity %v, start time %v\n", calendarItem.ID, startTime)
 		if startTime.Before(beforeTime) && startTime.After(afterTime) {
 			return &calendarItem, nil
 		}

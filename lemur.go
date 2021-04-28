@@ -137,7 +137,9 @@ func main() {
 					if err != nil {
 						return err
 					}
-					fmt.Printf("Existing Garmin activity, id: %v, title: %s\n", calendarItem.ID, calendarItem.Title)
+					if calendarItem != nil {
+						fmt.Printf("Existing Garmin activity, id: %v, title: %s\n", calendarItem.ID, calendarItem.Title)
+					}
 				}
 			}
 			return nil
