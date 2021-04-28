@@ -7,8 +7,9 @@ import (
 	"time"
 
 	"github.com/bobdoah/subtly-witty-lemur/geo"
-	"github.com/bobdoah/subtly-witty-lemur/strava"
+	"github.com/bobdoah/subtly-witty-lemur/stravautils"
 	"github.com/philhofer/tcx"
+	"github.com/strava/go.strava"
 	"github.com/urfave/cli/v2"
 )
 
@@ -58,15 +59,15 @@ func main() {
 			&cli.StringFlag{
 				Name:        "state-file",
 				Usage:       "State file for Strava API",
-				Destination: &strava.StateFile,
-				Value:       strava.StateFilename(),
+				Destination: &stravautils.StateFile,
+				Value:       stravautils.StateFilename(),
 			},
 		},
 		Commands: []*cli.Command{
 			&cli.Command{
 				Name: "authenticate-with-strava",
 				Flags: []cli.Flag{
-					&cli.StringFlag{
+					&cli.IntFlag{
 						Name:        "client-id",
 						Usage:       "Client ID for strava api",
 						Destination: &strava.ClientId,
@@ -77,8 +78,8 @@ func main() {
 						Destination: &strava.ClientSecret,
 					},
 				},
+				Action: stravautils.Authenticate,
 			},
-			Action: strava.Authenticate,
 		},
 		Action: func(c *cli.Context) error {
 			if c.NArg() > 0 {
@@ -97,7 +98,7 @@ func main() {
 					if isCommute(db, homePoints, workPoints) {
 						fmt.Printf("id: %s sport: %s is a commute\n", activity.Id.Format(time.RFC3339), activity.Sport)
 					}
-					activitySummaries, err := strava.GetActivityForTime(accessToken, activity.Id)
+					activitySummaries, err := stravautils.GetActivityForTime(stravautils.Auth.AccessToken, activity.Id)
 					if err != nil {
 						return err
 					}

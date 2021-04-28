@@ -1,4 +1,4 @@
-package strava
+package stravautils
 
 import (
 	"encoding/json"
