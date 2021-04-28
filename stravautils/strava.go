@@ -13,7 +13,7 @@ func GetActivityForTime(accessToken string, startTime time.Time) ([]*strava.Acti
 	afterTime := startTime.Add(time.Minute * -10)
 	beforeTime := startTime.Add(time.Minute * 10)
 
-	fmt.Printf("Checking activities between %v and %v\n", beforeTime, afterTime)
+	fmt.Printf("Checking Strava for activities between %v and %v\n", beforeTime, afterTime)
 
 	client := strava.NewClient(accessToken)
 	activities, err := strava.NewCurrentAthleteService(client).ListActivities().Before(int(beforeTime.Unix())).After(int(afterTime.Unix())).Do()

@@ -1,25 +1,16 @@
 package stravautils
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"log"
 	"net/http"
-	"os"
-	"path"
 
 	"github.com/strava/go.strava"
 	"github.com/urfave/cli/v2"
+
+	"github.com/bobdoah/subtly-witty-lemur/state"
 )
 
 var authenticator *strava.OAuthAuthenticator
-
-// Auth contains the authentication response
-var Auth *strava.AuthorizationResponse
-
-// StateFile is the path of the statefile
-var StateFile string
 
 //Authenticate completes the OAuth exchange for a given athlete
 func Authenticate(c *cli.Context) error {
@@ -54,8 +45,8 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 
 func oAuthSuccess(auth *strava.AuthorizationResponse, w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Successfully authorized")
-	Auth = auth
-	storeState()
+	state.AuthState.Strava = auth
+	state.StoreState()
 }
 
 func oAuthFailure(err error, w http.ResponseWriter, r *http.Request) {
@@ -73,41 +64,5 @@ func oAuthFailure(err error, w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "There was some sort of server error, try again to see if the problem continues")
 	} else {
 		fmt.Fprint(w, err)
-	}
-}
-
-// StateFilename returns the path to the statefile name
-func StateFilename() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		log.Fatalf("Could not detect home directory: %s", err.Error())
-	}
-
-	return path.Join(home, ".subtly-witty-lemur.json")
-}
-
-// LoadState loads the auth state from the statefile
-func LoadState() {
-	data, err := ioutil.ReadFile(StateFile)
-	if err != nil {
-		log.Printf("Could not open state file: %s", err.Error())
-		return
-	}
-
-	err = json.Unmarshal(data, &Auth)
-	if err != nil {
-		log.Fatalf("Could not unmarshal state: %s", err.Error())
-	}
-}
-
-func storeState() {
-	b, err := json.MarshalIndent(Auth, "", "  ")
-	if err != nil {
-		log.Fatalf("Could not marshal state: %s", err.Error())
-	}
-
-	err = ioutil.WriteFile(StateFile, b, 0600)
-	if err != nil {
-		log.Fatalf("Could not write state file: %s", err.Error())
 	}
 }

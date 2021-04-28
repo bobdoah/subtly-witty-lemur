@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/bobdoah/subtly-witty-lemur/geo"
+	"github.com/bobdoah/subtly-witty-lemur/state"
 	"github.com/bobdoah/subtly-witty-lemur/stravautils"
 	"github.com/philhofer/tcx"
 	"github.com/strava/go.strava"
@@ -59,8 +60,8 @@ func main() {
 			&cli.StringFlag{
 				Name:        "state-file",
 				Usage:       "State file for Strava API",
-				Destination: &stravautils.StateFile,
-				Value:       stravautils.StateFilename(),
+				Destination: &state.StateFile,
+				Value:       state.Filename(),
 			},
 		},
 		Commands: []*cli.Command{
@@ -91,7 +92,7 @@ func main() {
 		Action: func(c *cli.Context) error {
 			if c.NArg() > 0 {
 				var i int
-				stravautils.LoadState()
+				state.LoadState()
 				homePoints, err := geo.GetPointsFromPostcodes(c.StringSlice("home"))
 				if err != nil {
 					return err
@@ -109,7 +110,7 @@ func main() {
 					if isCommute(db, homePoints, workPoints) {
 						fmt.Printf("id: %s sport: %s is a commute\n", activity.Id.Format(time.RFC3339), activity.Sport)
 					}
-					activitySummaries, err := stravautils.GetActivityForTime(stravautils.Auth.AccessToken, activity.Laps[0].Trk.Pt[0].Time)
+					activitySummaries, err := stravautils.GetActivityForTime(state.AuthState.Strava.AccessToken, activity.Laps[0].Trk.Pt[0].Time)
 					if err != nil {
 						return err
 					}
