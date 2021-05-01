@@ -32,7 +32,20 @@ func readTcx(filepath string) (*tcx.TCXDB, error) {
 
 func isCommute(db *tcx.TCXDB, homePoints map[string]geo.Point, workPoints map[string]geo.Point) bool {
 	return ((geo.StartIsCloseToOneOf(db, homePoints) && geo.EndIsCloseToOneOf(db, workPoints)) ||
-		(geo.StartIsCloseToOneOf(db, workPoints) && geo.EndIsCloseToOneOf(db, homePoints)))
+		(geo.StartIsCloseToOneOf(db, workPoints) && geo.EndIsCloseToOneOf(db, homePoints))) && !isWeekendRide(db)
+}
+
+func isWeekendRide(db *tcx.TCXDB) bool {
+	activity := db.Acts.Act[0]
+	trackpoint := activity.Laps[0].Trk.Pt[0]
+	weekday := trackpoint.Time.Weekday()
+	switch weekday {
+	case
+		time.Sunday,
+		time.Saturday:
+		return true
+	}
+	return false
 }
 
 func printLatLons(postcodes []string) error {

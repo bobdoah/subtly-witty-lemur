@@ -61,7 +61,7 @@ func EndIsCloseToOneOf(tcxdb *tcx.TCXDB, points map[string]Point) bool {
 
 //TrackpointIsCloseToOneOf compares a TCX trackpoint to a list of latitude and longitude points and return true if it is close to any of them
 func TrackpointIsCloseToOneOf(trackpoint tcx.Trackpoint, points map[string]Point) bool {
-	var closeTo float64 = 5
+	var closeTo float64 = 1
 	for postcode, point := range points {
 		dist := Distance(trackpoint.Lat, trackpoint.Long, point.Latitude, point.Longitude)
 		if dist < closeTo {
