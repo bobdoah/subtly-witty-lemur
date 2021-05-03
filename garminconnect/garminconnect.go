@@ -32,8 +32,8 @@ func GetCalenderItemForTime(startTime time.Time) (*connect.CalendarItem, error) 
 	return nil, nil
 }
 
-// GetGearUUID returns the Garmin Connect ID for a given gear name string
-func GetGearUUID(gearName string) (*string, error) {
+// getGearUUID returns the Garmin Connect ID for a given gear name string
+func getGearUUID(gearName string) (*string, error) {
 	gear, err := state.AuthState.Garmin.Gear(0)
 	if err != nil {
 		return nil, err
@@ -46,4 +46,24 @@ func GetGearUUID(gearName string) (*string, error) {
 		}
 	}
 	return nil, nil
+}
+
+// GetGearUUIDs gets the UUIDs for the gear names supplied
+func GetGearUUIDs(gear *GearList) error {
+	commuteUUID, err := getGearUUID(gear.CommuteBike.Name)
+	if err != nil {
+		return err
+	}
+	gear.CommuteBike.GarminUUID = commuteUUID
+	roadUUID, err := getGearUUID(gear.RoadBike.Name)
+	if err != nil {
+		return err
+	}
+	gear.RoadBike.GarminUUID = roadUUID
+	mountainUUID, err := getGearUUID(gear.MountainBike.Name)
+	if err != nil {
+		return err
+	}
+	gear.MountainBike.GarminUUID = mountainUUID
+	return nil
 }

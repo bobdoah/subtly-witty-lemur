@@ -6,17 +6,19 @@ import (
 	"os"
 	"time"
 
+	"github.com/philhofer/tcx"
+	"github.com/strava/go.strava"
+	"github.com/urfave/cli/v2"
+
 	"github.com/bobdoah/subtly-witty-lemur/garminconnect"
 	"github.com/bobdoah/subtly-witty-lemur/geo"
 	"github.com/bobdoah/subtly-witty-lemur/logger"
 	"github.com/bobdoah/subtly-witty-lemur/state"
 	"github.com/bobdoah/subtly-witty-lemur/stravautils"
-	"github.com/philhofer/tcx"
-	"github.com/strava/go.strava"
-	"github.com/urfave/cli/v2"
 )
 
-type gearList struct {
+// GearList holds the details for the gear
+type GearList struct {
 	CommuteBike  gear
 	MountainBike gear
 	RoadBike     gear
@@ -78,7 +80,7 @@ func printLatLons(postcodes []string) error {
 }
 
 func main() {
-	gear := gearList{}
+	gear := GearList{}
 	app := &cli.App{
 		Name:  "upload-tcx",
 		Usage: "upload a tcx file to somewhere",
@@ -191,6 +193,7 @@ func main() {
 			if c.NArg() > 0 {
 				var i int
 				state.LoadState()
+				err := garminconnect.GetGearUUIDs(gear)
 				homePoints, err := geo.GetPointsFromPostcodes(c.StringSlice("home"))
 				if err != nil {
 					return err
