@@ -16,6 +16,19 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+type gearList struct {
+	CommuteBike  gear
+	MountainBike gear
+	RoadBike     gear
+}
+
+// Gear holds the strings for the names of the gear
+type gear struct {
+	Name       string
+	GarminUUID string
+	StravaID   string
+}
+
 func readTcx(filepath string) (*tcx.TCXDB, error) {
 	db, err := tcx.ReadFile(filepath)
 	if err != nil {
@@ -33,6 +46,10 @@ func readTcx(filepath string) (*tcx.TCXDB, error) {
 func isCommute(db *tcx.TCXDB, homePoints map[string]geo.Point, workPoints map[string]geo.Point) bool {
 	return ((geo.StartIsCloseToOneOf(db, homePoints) && geo.EndIsCloseToOneOf(db, workPoints)) ||
 		(geo.StartIsCloseToOneOf(db, workPoints) && geo.EndIsCloseToOneOf(db, homePoints))) && !isWeekendRide(db)
+}
+
+func isMTB(db *tcx.TCXDB) bool {
+	return db.Acts.Act[0].Sport == "Other"
 }
 
 func isWeekendRide(db *tcx.TCXDB) bool {
@@ -61,6 +78,7 @@ func printLatLons(postcodes []string) error {
 }
 
 func main() {
+	gear := gearList{}
 	app := &cli.App{
 		Name:  "upload-tcx",
 		Usage: "upload a tcx file to somewhere",
@@ -72,6 +90,21 @@ func main() {
 			&cli.StringSliceFlag{
 				Name:  "work",
 				Usage: "Postcodes of work starting points",
+			},
+			&cli.StringFlag{
+				Name:        "mtb",
+				Usage:       "name of the mountain bike in Garmin and Strava",
+				Destination: &gear.MountainBike.Name,
+			},
+			&cli.StringFlag{
+				Name:        "commute",
+				Usage:       "name of the commute bike in Garmin and Strava",
+				Destination: &gear.CommuteBike.Name,
+			},
+			&cli.StringFlag{
+				Name:        "road",
+				Usage:       "name of the road bike in Garmin and Strava",
+				Destination: &gear.RoadBike.Name,
 			},
 			&cli.StringFlag{
 				Name:        "state-file",

@@ -2,9 +2,11 @@ package garminconnect
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/abrander/garmin-connect"
+	"github.com/bobdoah/subtly-witty-lemur/logger"
 	"github.com/bobdoah/subtly-witty-lemur/state"
 )
 
@@ -22,9 +24,25 @@ func GetCalenderItemForTime(startTime time.Time) (*connect.CalendarItem, error) 
 	}
 	for _, calendarItem := range calendar.CalendarItems {
 		startTime := calendarItem.StartTimestampLocal
-		fmt.Printf("Activity %v, start time %v\n", calendarItem.ID, startTime)
+		logger.GetLogger().Printf("Activity %v, start time %v\n", calendarItem.ID, startTime)
 		if startTime.Before(beforeTime) && startTime.After(afterTime) {
 			return &calendarItem, nil
+		}
+	}
+	return nil, nil
+}
+
+// GetGearUUID returns the Garmin Connect ID for a given gear name string
+func GetGearUUID(gearName string) (*string, error) {
+	gear, err := state.AuthState.Garmin.Gear(0)
+	if err != nil {
+		return nil, err
+	}
+	for _, g := range gear {
+		logger.GetLogger().Printf("Checking %s matches %s", g.DisplayName, gearName)
+		if strings.EqualFold(g.DisplayName, gearName) {
+			logger.GetLogger().Printf("Matched Type %s ID %d", g.DisplayName, g.Uuid)
+			return &g.Uuid, nil
 		}
 	}
 	return nil, nil
