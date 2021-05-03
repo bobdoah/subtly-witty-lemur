@@ -39,6 +39,7 @@ func isWeekendRide(db *tcx.TCXDB) bool {
 	activity := db.Acts.Act[0]
 	trackpoint := activity.Laps[0].Trk.Pt[0]
 	weekday := trackpoint.Time.Weekday()
+	logger.GetLogger().Printf("Weekday: %s", weekday)
 	switch weekday {
 	case
 		time.Sunday,
@@ -141,9 +142,12 @@ func main() {
 							if err != nil {
 								return err
 							}
-							if isCommute(db, homePoints, workPoints) {
-								fmt.Printf("id: %s sport: %s is a commute\n", activity.Id.Format(time.RFC3339), activity.Sport)
+							rideIsCommute := isCommute(db, homePoints, workPoints)
+							var not string = ""
+							if !rideIsCommute {
+								not = "not "
 							}
+							fmt.Printf("id: %s sport: %s is %sa commute\n", activity.Id.Format(time.RFC3339), activity.Sport, not)
 						}
 					}
 					return nil
