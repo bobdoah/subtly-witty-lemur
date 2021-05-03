@@ -172,9 +172,12 @@ func main() {
 					if err != nil {
 						return err
 					}
-					if isCommute(db, homePoints, workPoints) {
-						fmt.Printf("id: %s sport: %s is a commute\n", activity.Id.Format(time.RFC3339), activity.Sport)
+					rideIsCommute := isCommute(db, homePoints, workPoints)
+					var not string = ""
+					if !rideIsCommute {
+						not = "not "
 					}
+					fmt.Printf("id: %s sport: %s is %sa commute\n", activity.Id.Format(time.RFC3339), activity.Sport, not)
 					startTime := activity.Laps[0].Trk.Pt[0].Time
 					activitySummaries, err := stravautils.GetActivityForTime(state.AuthState.Strava.AccessToken, startTime)
 					if err != nil {
