@@ -11,25 +11,12 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/bobdoah/subtly-witty-lemur/garminconnect"
+	"github.com/bobdoah/subtly-witty-lemur/gear"
 	"github.com/bobdoah/subtly-witty-lemur/geo"
 	"github.com/bobdoah/subtly-witty-lemur/logger"
 	"github.com/bobdoah/subtly-witty-lemur/state"
 	"github.com/bobdoah/subtly-witty-lemur/stravautils"
 )
-
-// GearList holds the details for the gear
-type GearList struct {
-	CommuteBike  gear
-	MountainBike gear
-	RoadBike     gear
-}
-
-// Gear holds the strings for the names of the gear
-type gear struct {
-	Name       string
-	GarminUUID string
-	StravaID   string
-}
 
 func readTcx(filepath string) (*tcx.TCXDB, error) {
 	db, err := tcx.ReadFile(filepath)
@@ -80,7 +67,7 @@ func printLatLons(postcodes []string) error {
 }
 
 func main() {
-	gear := GearList{}
+	gear := gear.Collection{}
 	app := &cli.App{
 		Name:  "upload-tcx",
 		Usage: "upload a tcx file to somewhere",
@@ -159,6 +146,10 @@ func main() {
 				Action: garminconnect.Authenticate,
 			},
 			&cli.Command{
+				Name:   "signout-of-garmin-connect",
+				Action: garminconnect.Signout,
+			},
+			&cli.Command{
 				Name: "summary",
 				Action: func(c *cli.Context) error {
 					if c.NArg() > 0 {
@@ -193,7 +184,10 @@ func main() {
 			if c.NArg() > 0 {
 				var i int
 				state.LoadState()
-				err := garminconnect.GetGearUUIDs(gear)
+				err := garminconnect.GetGearUUIDs(&gear)
+				if err != nil {
+					return err
+				}
 				homePoints, err := geo.GetPointsFromPostcodes(c.StringSlice("home"))
 				if err != nil {
 					return err

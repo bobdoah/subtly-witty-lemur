@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/abrander/garmin-connect"
+	"github.com/bobdoah/subtly-witty-lemur/gear"
 	"github.com/bobdoah/subtly-witty-lemur/logger"
 	"github.com/bobdoah/subtly-witty-lemur/state"
 )
@@ -38,6 +39,7 @@ func getGearUUID(gearName string) (*string, error) {
 	if err != nil {
 		return nil, err
 	}
+	logger.GetLogger().Printf("Gear: %v", gear)
 	for _, g := range gear {
 		logger.GetLogger().Printf("Checking %s matches %s", g.DisplayName, gearName)
 		if strings.EqualFold(g.DisplayName, gearName) {
@@ -49,21 +51,21 @@ func getGearUUID(gearName string) (*string, error) {
 }
 
 // GetGearUUIDs gets the UUIDs for the gear names supplied
-func GetGearUUIDs(gear *GearList) error {
+func GetGearUUIDs(gear *gear.Collection) error {
 	commuteUUID, err := getGearUUID(gear.CommuteBike.Name)
 	if err != nil {
 		return err
 	}
-	gear.CommuteBike.GarminUUID = commuteUUID
+	gear.CommuteBike.GarminUUID = *commuteUUID
 	roadUUID, err := getGearUUID(gear.RoadBike.Name)
 	if err != nil {
 		return err
 	}
-	gear.RoadBike.GarminUUID = roadUUID
+	gear.RoadBike.GarminUUID = *roadUUID
 	mountainUUID, err := getGearUUID(gear.MountainBike.Name)
 	if err != nil {
 		return err
 	}
-	gear.MountainBike.GarminUUID = mountainUUID
+	gear.MountainBike.GarminUUID = *mountainUUID
 	return nil
 }

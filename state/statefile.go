@@ -11,6 +11,20 @@ import (
 	"github.com/strava/go.strava"
 )
 
+// GearList holds the details for the gear
+type GearList struct {
+	CommuteBike  gear
+	MountainBike gear
+	RoadBike     gear
+}
+
+// Gear holds the strings for the names of the gear
+type gear struct {
+	Name       string
+	GarminUUID string
+	StravaID   string
+}
+
 // StateFile is the path of the statefile
 var StateFile string
 

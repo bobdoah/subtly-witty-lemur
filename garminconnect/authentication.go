@@ -26,3 +26,13 @@ func Authenticate(c *cli.Context) error {
 	}
 	return err
 }
+
+// Signout of Garmin Connect
+func Signout(c *cli.Context) error {
+	state.LoadState()
+	if err := state.AuthState.Garmin.Signout(); err != nil {
+		return err
+	}
+	state.AuthState.Garmin.Password = ""
+	return nil
+}
