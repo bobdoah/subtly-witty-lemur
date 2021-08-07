@@ -8,7 +8,6 @@ import (
 	"path"
 
 	"github.com/abrander/garmin-connect"
-	"github.com/strava/go.strava"
 )
 
 // GearList holds the details for the gear
@@ -29,8 +28,8 @@ type gear struct {
 var StateFile string
 
 type authState struct {
-	Strava *strava.AuthorizationResponse `json:"strava"`
-	Garmin *connect.Client               `json:"garmin"`
+	Garmin            *connect.Client `json:"garmin"`
+	StravaAccessToken string          `json:"stravaAccessToken"`
 }
 
 // AuthState holds auth details for Garmin Connect and Strava

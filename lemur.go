@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/philhofer/tcx"
-	"github.com/strava/go.strava"
 	"github.com/urfave/cli/v2"
+	//	"github.com/vangent/strava"
 
 	"github.com/bobdoah/subtly-witty-lemur/garminconnect"
 	"github.com/bobdoah/subtly-witty-lemur/gear"
@@ -112,16 +112,14 @@ func main() {
 				Name: "authenticate-with-strava",
 				Flags: []cli.Flag{
 					&cli.IntFlag{
-						Name:        "client-id",
-						Usage:       "Client ID for strava api",
-						Destination: &strava.ClientId,
-						Required:    true,
+						Name:     "client-id",
+						Usage:    "Client ID for strava api",
+						Required: true,
 					},
 					&cli.StringFlag{
-						Name:        "client-secret",
-						Usage:       "Client secret for strava api",
-						Destination: &strava.ClientSecret,
-						Required:    true,
+						Name:     "client-secret",
+						Usage:    "Client secret for strava api",
+						Required: true,
 					},
 					&cli.IntFlag{
 						Name:  "port",
@@ -188,10 +186,10 @@ func main() {
 				if err != nil {
 					return err
 				}
-				err = stravautils.GetGearIds(state.AuthState.Strava.AccessToken, &gear)
-				if err != nil {
-					return err
-				}
+				//err = stravautils.GetGearIds(state.AuthState.Strava.AccessToken, &gear)
+				//if err != nil {
+				//	return err
+				//}
 				homePoints, err := geo.GetPointsFromPostcodes(c.StringSlice("home"))
 				if err != nil {
 					return err
@@ -218,13 +216,13 @@ func main() {
 					}
 					fmt.Printf("id: %s sport: %s is %sa commute, is %smtb\n", activity.Id.Format(time.RFC3339), activity.Sport, not, notMTB)
 					startTime := activity.Laps[0].Trk.Pt[0].Time
-					activitySummaries, err := stravautils.GetActivityForTime(state.AuthState.Strava.AccessToken, startTime)
-					if err != nil {
-						return err
-					}
-					for _, activitySummary := range activitySummaries {
-						fmt.Printf("Existing Strava activity, id: %d, name: %s\n", activitySummary.Id, activitySummary.Name)
-					}
+					//activitySummaries, err := stravautils.GetActivityForTime(state.AuthState.Strava.AccessToken, startTime)
+					//if err != nil {
+					//	return err
+					//}
+					//for _, activitySummary := range activitySummaries {
+					//	fmt.Printf("Existing Strava activity, id: %d, name: %s\n", activitySummary.Id, activitySummary.Name)
+					//}
 					calendarItem, err := garminconnect.GetCalenderItemForTime(startTime)
 					if err != nil {
 						return err
