@@ -188,6 +188,10 @@ func main() {
 				if err != nil {
 					return err
 				}
+				err = stravautils.GetGearIds(state.AuthState.Strava.AccessToken, &gear)
+				if err != nil {
+					return err
+				}
 				homePoints, err := geo.GetPointsFromPostcodes(c.StringSlice("home"))
 				if err != nil {
 					return err
@@ -207,7 +211,12 @@ func main() {
 					if !rideIsCommute {
 						not = "not "
 					}
-					fmt.Printf("id: %s sport: %s is %sa commute\n", activity.Id.Format(time.RFC3339), activity.Sport, not)
+					rideIsMTB := isMTB(db)
+					var notMTB string = ""
+					if !rideIsMTB {
+						notMTB = "not "
+					}
+					fmt.Printf("id: %s sport: %s is %sa commute, is %smtb\n", activity.Id.Format(time.RFC3339), activity.Sport, not, notMTB)
 					startTime := activity.Laps[0].Trk.Pt[0].Time
 					activitySummaries, err := stravautils.GetActivityForTime(state.AuthState.Strava.AccessToken, startTime)
 					if err != nil {

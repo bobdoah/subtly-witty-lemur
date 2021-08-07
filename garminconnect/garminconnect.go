@@ -39,11 +39,10 @@ func getGearUUID(gearName string) (*string, error) {
 	if err != nil {
 		return nil, err
 	}
-	logger.GetLogger().Printf("Gear: %v", gear)
 	for _, g := range gear {
 		logger.GetLogger().Printf("Checking %s matches %s", g.DisplayName, gearName)
 		if strings.EqualFold(g.DisplayName, gearName) {
-			logger.GetLogger().Printf("Matched Type %s ID %d", g.DisplayName, g.Uuid)
+			logger.GetLogger().Printf("Matched Type %s ID %s", g.DisplayName, g.Uuid)
 			return &g.Uuid, nil
 		}
 	}
@@ -52,20 +51,41 @@ func getGearUUID(gearName string) (*string, error) {
 
 // GetGearUUIDs gets the UUIDs for the gear names supplied
 func GetGearUUIDs(gear *gear.Collection) error {
-	commuteUUID, err := getGearUUID(gear.CommuteBike.Name)
-	if err != nil {
-		return err
+	if gear.CommuteBike.Name != "" {
+		logger.GetLogger().Printf("Commute bike is set to %s", gear.CommuteBike.Name)
+		commuteUUID, err := getGearUUID(gear.CommuteBike.Name)
+		if err != nil {
+			return err
+		}
+		if commuteUUID != nil {
+			gear.CommuteBike.GarminUUID = *commuteUUID
+		}
+	} else {
+		logger.GetLogger().Printf("Commute bike is not set")
 	}
-	gear.CommuteBike.GarminUUID = *commuteUUID
-	roadUUID, err := getGearUUID(gear.RoadBike.Name)
-	if err != nil {
-		return err
+	if gear.RoadBike.Name != "" {
+		logger.GetLogger().Printf("Road bike is set to %s", gear.RoadBike.Name)
+		roadUUID, err := getGearUUID(gear.RoadBike.Name)
+		if err != nil {
+			return err
+		}
+		if roadUUID != nil {
+			gear.RoadBike.GarminUUID = *roadUUID
+		}
+	} else {
+		logger.GetLogger().Printf("Road bike is not set")
 	}
-	gear.RoadBike.GarminUUID = *roadUUID
-	mountainUUID, err := getGearUUID(gear.MountainBike.Name)
-	if err != nil {
-		return err
+	if gear.MountainBike.Name != "" {
+		logger.GetLogger().Printf("Mountain bike is set to %s", gear.MountainBike.Name)
+		mountainUUID, err := getGearUUID(gear.MountainBike.Name)
+		if err != nil {
+			return err
+		}
+		if mountainUUID != nil {
+			gear.MountainBike.GarminUUID = *mountainUUID
+		}
+	} else {
+		logger.GetLogger().Printf("Mountain bike is not set")
 	}
-	gear.MountainBike.GarminUUID = *mountainUUID
 	return nil
 }
