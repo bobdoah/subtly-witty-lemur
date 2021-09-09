@@ -216,13 +216,13 @@ func main() {
 					}
 					fmt.Printf("id: %s sport: %s is %sa commute, is %smtb\n", activity.Id.Format(time.RFC3339), activity.Sport, not, notMTB)
 					startTime := activity.Laps[0].Trk.Pt[0].Time
-					//activitySummaries, err := stravautils.GetActivityForTime(state.AuthState.Strava.AccessToken, startTime)
-					//if err != nil {
-					//	return err
-					//}
-					//for _, activitySummary := range activitySummaries {
-					//	fmt.Printf("Existing Strava activity, id: %d, name: %s\n", activitySummary.Id, activitySummary.Name)
-					//}
+					activitySummaries, err := stravautils.GetActivityForTime(state.AuthState.StravaAccessToken, startTime)
+					if err != nil {
+						return err
+					}
+					for _, activitySummary := range activitySummaries {
+						fmt.Printf("Existing Strava activity, id: %d, name: %s\n", activitySummary.Id, activitySummary.Name)
+					}
 					calendarItem, err := garminconnect.GetCalenderItemForTime(startTime)
 					if err != nil {
 						return err

@@ -2,29 +2,38 @@ package stravautils
 
 import (
 	"context"
-	//"fmt"
-	//"time"
+	"fmt"
+	"time"
+
+	"github.com/antihax/optional"
+	"github.com/vangent/strava"
 
 	"github.com/bobdoah/subtly-witty-lemur/gear"
 	"github.com/bobdoah/subtly-witty-lemur/logger"
-	"github.com/vangent/strava"
 )
 
 // GetActivityForTime returns activities within a 20 minute window of a given time
-//func GetActivityForTime(accessToken string, startTime time.Time) ([]*strava.ActivitySummary, error) {
-//
-//	afterTime := startTime.Add(time.Minute * -10)
-//	beforeTime := startTime.Add(time.Minute * 10)
-//
-//	fmt.Printf("Checking Strava for activities between %v and %v\n", beforeTime, afterTime)
-//
-//	client := strava.NewClient(accessToken)
-//	activities, err := strava.NewCurrentAthleteService(client).ListActivities().Before(int(beforeTime.Unix())).After(int(afterTime.Unix())).Do()
-//	if err != nil {
-//		return nil, err
-//	}
-//	return activities, nil
-//}
+func GetActivityForTime(accessToken string, startTime time.Time) ([]strava.SummaryActivity, error) {
+
+	afterTime := startTime.Add(time.Minute * -10)
+	beforeTime := startTime.Add(time.Minute * 10)
+
+	fmt.Printf("Checking Strava for activities between %v and %v\n", beforeTime, afterTime)
+
+	ctx := context.WithValue(context.Background(), strava.ContextAccessToken, accessToken)
+	cfg := strava.NewConfiguration()
+	client := strava.NewAPIClient(cfg)
+	opts := &strava.GetLoggedInAthleteActivitiesOpts{
+		Before: optional.NewInt32(int32(beforeTime.Unix())),
+		After:  optional.NewInt32(int32(afterTime.Unix())),
+	}
+
+	activities, _, err := client.ActivitiesApi.GetLoggedInAthleteActivities(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	return activities, nil
+}
 
 // GetGearIds gets the Ids of the gear names supplied
 func GetGearIds(accessToken string, gear *gear.Collection) error {
