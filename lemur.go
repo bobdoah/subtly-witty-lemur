@@ -186,10 +186,10 @@ func main() {
 				if err != nil {
 					return err
 				}
-				//err = stravautils.GetGearIds(state.AuthState.Strava.AccessToken, &gear)
-				//if err != nil {
-				//	return err
-				//}
+				err = stravautils.GetGearIds(state.AuthState.StravaAccessToken, &gear)
+				if err != nil {
+					return err
+				}
 				homePoints, err := geo.GetPointsFromPostcodes(c.StringSlice("home"))
 				if err != nil {
 					return err
