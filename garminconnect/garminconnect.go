@@ -2,10 +2,11 @@ package garminconnect
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
-	"github.com/abrander/garmin-connect"
+	connect "github.com/abrander/garmin-connect"
 	"github.com/bobdoah/subtly-witty-lemur/gear"
 	"github.com/bobdoah/subtly-witty-lemur/logger"
 	"github.com/bobdoah/subtly-witty-lemur/state"
@@ -88,4 +89,23 @@ func GetGearUUIDs(gear *gear.Collection) error {
 		logger.GetLogger().Printf("Mountain bike is not set")
 	}
 	return nil
+}
+
+// ActivityUpload uploads an activity to Garmin Conenct
+func ActivityUpload(filename string) (int, error) {
+	f, err := os.Open(filename)
+	if err != nil {
+		return 0, err
+	}
+	format, err := connect.FormatFromFilename(filename)
+	if err != nil {
+		return 0, err
+	}
+	id, err := state.AuthState.Garmin.ImportActivity(f, format)
+	if err != nil {
+		fmt.Printf("Failed to upload activity\n")
+	} else {
+		fmt.Printf("Activity imported with ID %d\n", id)
+	}
+	return id, err
 }

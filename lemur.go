@@ -8,6 +8,7 @@ import (
 
 	"github.com/philhofer/tcx"
 	"github.com/urfave/cli/v2"
+
 	//	"github.com/vangent/strava"
 
 	"github.com/bobdoah/subtly-witty-lemur/garminconnect"
@@ -199,19 +200,25 @@ func main() {
 					return err
 				}
 				for i = 0; i < c.Args().Len(); i++ {
-					db, err := readTcx(c.Args().Get(i))
+					filename := c.Args().Get(i)
+					db, err := readTcx(filename)
 					activity := db.Acts.Act[0]
+					garminGearUUID := gear.RoadBike.GarminUUID
 					if err != nil {
 						return err
 					}
 					rideIsCommute := isCommute(db, homePoints, workPoints)
 					var not string = ""
-					if !rideIsCommute {
+					if rideIsCommute {
+						garminGearUUID = gear.CommuteBike.GarminUUID
+					} else {
 						not = "not "
 					}
 					rideIsMTB := isMTB(db)
 					var notMTB string = ""
-					if !rideIsMTB {
+					if rideIsMTB {
+						garminGearUUID = gear.MountainBike.GarminUUID
+					} else {
 						notMTB = "not "
 					}
 					fmt.Printf("id: %s sport: %s is %sa commute, is %smtb\n", activity.Id.Format(time.RFC3339), activity.Sport, not, notMTB)
@@ -230,6 +237,21 @@ func main() {
 					if calendarItem != nil {
 						fmt.Printf("Existing Garmin activity, id: %v, title: %s\n", calendarItem.ID, calendarItem.Title)
 					}
+					if calendarItem != nil || len(activitySummaries) > 0 {
+						fmt.Printf("Existing activity found. Not uploading\n")
+						return nil
+					}
+					id, err := garminconnect.ActivityUpload(filename)
+					if err != nil {
+						return err
+					}
+					err = state.AuthState.Garmin.GearLink(garminGearUUID, id)
+					if err != nil {
+						fmt.Printf("Failed to set Gear for activity %d", id)
+						return err
+					}
+					fmt.Printf("Successfully set Gear for activity %d", id)
+
 				}
 			}
 			return nil
