@@ -2,6 +2,7 @@ package stravautils
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -35,6 +36,28 @@ func GetActivityForTime(accessToken string, startTime time.Time) ([]strava.Summa
 	return activities, nil
 }
 
+// WaitForActivity waits for activity to sync in Strava
+func WaitForActivity(accessToken string, startTime time.Time) ([]strava.SummaryActivity, error) {
+	c := make(chan []strava.SummaryActivity)
+	go func() {
+		var summaryActivity []strava.SummaryActivity
+		for {
+			summaryActivity, _ = GetActivityForTime(accessToken, startTime)
+			if summaryActivity != nil {
+				break
+			}
+			time.Sleep(10 * time.Second)
+		}
+		c <- summaryActivity
+	}()
+	select {
+	case res := <-c:
+		return res, nil
+	case <-time.After(5 * time.Minute):
+		return nil, errors.New("Timed out waiting for activity")
+	}
+}
+
 // GetGearIds gets the Ids of the gear names supplied
 func GetGearIds(accessToken string, gear *gear.Collection) error {
 	ctx := context.WithValue(context.Background(), strava.ContextAccessToken, accessToken)
@@ -62,4 +85,28 @@ func GetGearIds(accessToken string, gear *gear.Collection) error {
 		}
 	}
 	return nil
+}
+
+// UpdateActivity sets the gear ID and commute status for an activity
+func UpdateActivity(accessToken string, summaryActivity strava.SummaryActivity, gearID string, isCommute bool) error {
+	ctx := context.WithValue(context.Background(), strava.ContextAccessToken, accessToken)
+	cfg := strava.NewConfiguration()
+	client := strava.NewAPIClient(cfg)
+
+	update := strava.UpdatableActivity{
+		Name:        summaryActivity.Name,
+		Type_:       summaryActivity.Type_,
+		WorkoutType: int(summaryActivity.WorkoutType),
+		GearId:      gearID,
+		Commute:     isCommute,
+		Trainer:     false,
+	}
+	logger.GetLogger().Printf("Updating activity with id %s to gearID %s and isCommute %s", summaryActivity.Id, gearID, isCommute)
+	_, _, err := client.ActivitiesApi.UpdateActivityById(ctx, summaryActivity.Id, &strava.UpdateActivityByIdOpts{Body: optional.NewInterface(update)})
+	if err != nil {
+		logger.GetLogger().Printf("Failed to update activity with id %d, with: %s", summaryActivity.Id, err)
+	} else {
+		logger.GetLogger().Printf("Successfully updated activity with id %d, gearID %s and isCommute: %s", summaryActivity.Id, gearID, isCommute)
+	}
+	return err
 }

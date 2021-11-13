@@ -204,6 +204,7 @@ func main() {
 					db, err := readTcx(filename)
 					activity := db.Acts.Act[0]
 					garminGearUUID := gear.RoadBike.GarminUUID
+					stravaGearID := gear.RoadBike.StravaID
 					if err != nil {
 						return err
 					}
@@ -211,6 +212,7 @@ func main() {
 					var not string = ""
 					if rideIsCommute {
 						garminGearUUID = gear.CommuteBike.GarminUUID
+						stravaGearID = gear.CommuteBike.StravaID
 					} else {
 						not = "not "
 					}
@@ -218,6 +220,7 @@ func main() {
 					var notMTB string = ""
 					if rideIsMTB {
 						garminGearUUID = gear.MountainBike.GarminUUID
+						stravaGearID = gear.MountainBike.StravaID
 					} else {
 						notMTB = "not "
 					}
@@ -241,6 +244,7 @@ func main() {
 						fmt.Printf("Existing activity found. Not uploading\n")
 						return nil
 					}
+					fmt.Printf(garminGearUUID)
 					id, err := garminconnect.ActivityUpload(filename)
 					if err != nil {
 						return err
@@ -251,7 +255,17 @@ func main() {
 						return err
 					}
 					fmt.Printf("Successfully set Gear for activity %d", id)
-
+					activitySummaries, err = stravautils.WaitForActivity(state.AuthState.StravaAccessToken, startTime)
+					if err != nil {
+						return err
+					}
+					if len(activitySummaries) > 1 {
+						return fmt.Errorf("Found more than one activity for time %s after upload", startTime.Format(time.RFC3339))
+					}
+					err = stravautils.UpdateActivity(state.AuthState.StravaAccessToken, activitySummaries[0], stravaGearID, rideIsCommute)
+					if err != nil {
+						return err
+					}
 				}
 			}
 			return nil

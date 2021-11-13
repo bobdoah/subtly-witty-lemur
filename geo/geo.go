@@ -65,9 +65,18 @@ func TrackpointIsCloseToOneOf(trackpoint tcx.Trackpoint, points map[string]Point
 	for postcode, point := range points {
 		dist := Distance(trackpoint.Lat, trackpoint.Long, point.Latitude, point.Longitude)
 		if dist < closeTo {
-			logger.GetLogger().Printf("Trackpoint is less than %skm from %s\n", strconv.FormatFloat(closeTo, 'f', -1, 64), postcode)
+			logger.GetLogger().Printf("Trackpoint is %skm (less than %skm) from %s\n",
+				strconv.FormatFloat(dist, 'f', -1, 64),
+				strconv.FormatFloat(closeTo, 'f', -1, 64),
+				postcode,
+			)
 			return true
 		}
+		logger.GetLogger().Printf("Trackpoint is %skm (more than %skm) from %s\n",
+			strconv.FormatFloat(dist, 'f', -1, 64),
+			strconv.FormatFloat(closeTo, 'f', -1, 64),
+			postcode,
+		)
 	}
 	return false
 }
