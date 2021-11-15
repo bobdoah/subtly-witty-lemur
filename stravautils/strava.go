@@ -2,8 +2,9 @@ package stravautils
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"time"
 
 	"github.com/antihax/optional"
@@ -36,28 +37,6 @@ func GetActivityForTime(accessToken string, startTime time.Time) ([]strava.Summa
 	return activities, nil
 }
 
-// WaitForActivity waits for activity to sync in Strava
-func WaitForActivity(accessToken string, startTime time.Time) ([]strava.SummaryActivity, error) {
-	c := make(chan []strava.SummaryActivity)
-	go func() {
-		var summaryActivity []strava.SummaryActivity
-		for {
-			summaryActivity, _ = GetActivityForTime(accessToken, startTime)
-			if summaryActivity != nil {
-				break
-			}
-			time.Sleep(10 * time.Second)
-		}
-		c <- summaryActivity
-	}()
-	select {
-	case res := <-c:
-		return res, nil
-	case <-time.After(5 * time.Minute):
-		return nil, errors.New("Timed out waiting for activity")
-	}
-}
-
 // GetGearIds gets the Ids of the gear names supplied
 func GetGearIds(accessToken string, gear *gear.Collection) error {
 	ctx := context.WithValue(context.Background(), strava.ContextAccessToken, accessToken)
@@ -87,26 +66,66 @@ func GetGearIds(accessToken string, gear *gear.Collection) error {
 	return nil
 }
 
-// UpdateActivity sets the gear ID and commute status for an activity
-func UpdateActivity(accessToken string, summaryActivity strava.SummaryActivity, gearID string, isCommute bool) error {
+// GetActivityNameForTime returns an activity name "Morning, Lunch, Evening, Night" "Ride" for a given time
+func GetActivityNameForTime(activityTime time.Time) string {
+	switch hour := activityTime.Hour(); {
+	case hour >= 4 && hour < 12:
+		return "Morning Ride"
+	case hour >= 12 && hour < 14:
+		return "Lunch Ride"
+	case hour >= 14 && hour < 18:
+		return "Afternoon Ride"
+	case hour >= 18 && hour < 22:
+		return "Evening Ride"
+	default:
+		return "Night Ride"
+	}
+}
+
+// UploadActivity uploads the activity and sets the gear ID and commute status for an activity
+func UploadActivity(accessToken string, activityTime time.Time, activityFilename string, gearID string, isCommute bool) error {
 	ctx := context.WithValue(context.Background(), strava.ContextAccessToken, accessToken)
 	cfg := strava.NewConfiguration()
 	client := strava.NewAPIClient(cfg)
 
-	update := strava.UpdatableActivity{
-		Name:        summaryActivity.Name,
-		Type_:       summaryActivity.Type_,
-		WorkoutType: int(summaryActivity.WorkoutType),
-		GearId:      gearID,
-		Commute:     isCommute,
-		Trainer:     false,
-	}
-	logger.GetLogger().Printf("Updating activity with id %s to gearID %s and isCommute %s", summaryActivity.Id, gearID, isCommute)
-	_, _, err := client.ActivitiesApi.UpdateActivityById(ctx, summaryActivity.Id, &strava.UpdateActivityByIdOpts{Body: optional.NewInterface(update)})
+	f, err := os.Open(activityFilename)
 	if err != nil {
-		logger.GetLogger().Printf("Failed to update activity with id %d, with: %s", summaryActivity.Id, err)
-	} else {
-		logger.GetLogger().Printf("Successfully updated activity with id %d, gearID %s and isCommute: %s", summaryActivity.Id, gearID, isCommute)
+		return fmt.Errorf("failed to open %q: %v", activityFilename, err)
 	}
-	return err
+
+	opts := strava.CreateUploadOpts{
+		Name:     optional.NewString(GetActivityNameForTime(activityTime)),
+		Type:     optional.NewString("Ride"),
+		DataType: optional.NewString("tcx"),
+		File:     optional.NewInterface(f),
+		GearId:   optional.NewString(gearID),
+	}
+	if isCommute {
+		opts.Commute = optional.NewInt32(1)
+	}
+	defer f.Close()
+
+	logger.GetLogger().Printf("Uploading %s, gearID: %s, isCommute: %v", activityFilename, gearID, isCommute)
+	upload, resp, err := client.UploadsApi.CreateUpload(ctx, &opts)
+	for {
+		if err != nil {
+			var msg string
+			if resp != nil {
+				body, _ := ioutil.ReadAll(resp.Body)
+				msg = string(body)
+			}
+			return fmt.Errorf("%v %s", err, msg)
+		}
+		if upload.Error_ != "" {
+			return fmt.Errorf("upload failed: %s", upload.Error_)
+		}
+		if upload.ActivityId != 0 {
+			break
+		}
+		time.Sleep(10 * time.Second)
+		logger.GetLogger().Printf(" checking on status of %d...", upload.Id)
+		upload, resp, err = client.UploadsApi.GetUploadById(ctx, upload.Id)
+	}
+	fmt.Printf("Uploaded to https://www.strava.com/activities/%d\n", upload.ActivityId)
+	return nil
 }

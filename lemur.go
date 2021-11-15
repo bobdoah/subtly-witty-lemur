@@ -107,6 +107,14 @@ func main() {
 				Value:       false,
 				Destination: &logger.Enabled,
 			},
+			&cli.BoolFlag{
+				Name:  "no-garmin",
+				Value: false,
+			},
+			&cli.BoolFlag{
+				Name:  "no-strava",
+				Value: false,
+			},
 		},
 		Commands: []*cli.Command{
 			&cli.Command{
@@ -244,27 +252,26 @@ func main() {
 						fmt.Printf("Existing activity found. Not uploading\n")
 						return nil
 					}
-					fmt.Printf(garminGearUUID)
-					id, err := garminconnect.ActivityUpload(filename)
-					if err != nil {
-						return err
+					if !c.Bool("no-garmin") {
+						id, err := garminconnect.ActivityUpload(filename)
+						if err != nil {
+							return err
+						}
+						err = state.AuthState.Garmin.GearLink(garminGearUUID, id)
+						if err != nil {
+							fmt.Printf("Failed to set Gear for activity %d", id)
+							return err
+						}
+						fmt.Printf("Successfully set Gear for activity %d", id)
+						if err != nil {
+							return err
+						}
 					}
-					err = state.AuthState.Garmin.GearLink(garminGearUUID, id)
-					if err != nil {
-						fmt.Printf("Failed to set Gear for activity %d", id)
-						return err
-					}
-					fmt.Printf("Successfully set Gear for activity %d", id)
-					activitySummaries, err = stravautils.WaitForActivity(state.AuthState.StravaAccessToken, startTime)
-					if err != nil {
-						return err
-					}
-					if len(activitySummaries) > 1 {
-						return fmt.Errorf("Found more than one activity for time %s after upload", startTime.Format(time.RFC3339))
-					}
-					err = stravautils.UpdateActivity(state.AuthState.StravaAccessToken, activitySummaries[0], stravaGearID, rideIsCommute)
-					if err != nil {
-						return err
+					if !c.Bool("no-strava") {
+						err = stravautils.UploadActivity(state.AuthState.StravaAccessToken, activity.Id, filename, stravaGearID, rideIsCommute)
+						if err != nil {
+							return err
+						}
 					}
 				}
 			}
