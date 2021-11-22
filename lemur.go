@@ -3,13 +3,13 @@ package main
 import (
 	"fmt"
 	"log"
+	"math"
 	"os"
 	"time"
 
 	"github.com/philhofer/tcx"
 	"github.com/urfave/cli/v2"
-
-	//	"github.com/vangent/strava"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/bobdoah/subtly-witty-lemur/garminconnect"
 	"github.com/bobdoah/subtly-witty-lemur/gear"
@@ -63,6 +63,73 @@ func printLatLons(postcodes []string) error {
 			return err
 		}
 		logger.GetLogger().Printf("Postcode: %s is at lat: %f, lon: %f\n", postcode, point.Latitude, point.Longitude)
+	}
+	return nil
+}
+func processUploadFile(filename string, homePoints map[string]geo.Point, workPoints map[string]geo.Point, gear gear.Collection, uploadGarmin bool, uploadStrava bool) error {
+	db, err := readTcx(filename)
+	activity := db.Acts.Act[0]
+	garminGearUUID := gear.RoadBike.GarminUUID
+	stravaGearID := gear.RoadBike.StravaID
+	if err != nil {
+		return err
+	}
+	rideIsCommute := isCommute(db, homePoints, workPoints)
+	var not string = ""
+	if rideIsCommute {
+		garminGearUUID = gear.CommuteBike.GarminUUID
+		stravaGearID = gear.CommuteBike.StravaID
+	} else {
+		not = "not "
+	}
+	rideIsMTB := isMTB(db)
+	var notMTB string = ""
+	if rideIsMTB {
+		garminGearUUID = gear.MountainBike.GarminUUID
+		stravaGearID = gear.MountainBike.StravaID
+	} else {
+		notMTB = "not "
+	}
+	fmt.Printf("id: %s sport: %s is %sa commute, is %smtb\n", activity.Id.Format(time.RFC3339), activity.Sport, not, notMTB)
+	startTime := activity.Laps[0].Trk.Pt[0].Time
+	activitySummaries, err := stravautils.GetActivityForTime(state.AuthState.StravaAccessToken, startTime)
+	if err != nil {
+		return err
+	}
+	for _, activitySummary := range activitySummaries {
+		fmt.Printf("Existing Strava activity, id: %d, name: %s\n", activitySummary.Id, activitySummary.Name)
+	}
+	calendarItem, err := garminconnect.GetCalenderItemForTime(startTime)
+	if err != nil {
+		return err
+	}
+	if calendarItem != nil {
+		fmt.Printf("Existing Garmin activity, id: %v, title: %s\n", calendarItem.ID, calendarItem.Title)
+	}
+	if calendarItem != nil || len(activitySummaries) > 0 {
+		fmt.Printf("Existing activity found. Not uploading\n")
+		return nil
+	}
+	if uploadGarmin {
+		id, err := garminconnect.ActivityUpload(filename)
+		if err != nil {
+			return err
+		}
+		err = state.AuthState.Garmin.GearLink(garminGearUUID, id)
+		if err != nil {
+			fmt.Printf("Failed to set Gear for activity %d", id)
+			return err
+		}
+		fmt.Printf("Successfully set Gear for activity %d", id)
+		if err != nil {
+			return err
+		}
+	}
+	if uploadStrava {
+		err = stravautils.UploadActivity(state.AuthState.StravaAccessToken, activity.Id, filename, stravaGearID, rideIsCommute)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -189,7 +256,6 @@ func main() {
 		},
 		Action: func(c *cli.Context) error {
 			if c.NArg() > 0 {
-				var i int
 				state.LoadState()
 				err := garminconnect.GetGearUUIDs(&gear)
 				if err != nil {
@@ -207,73 +273,32 @@ func main() {
 				if err != nil {
 					return err
 				}
-				for i = 0; i < c.Args().Len(); i++ {
-					filename := c.Args().Get(i)
-					db, err := readTcx(filename)
-					activity := db.Acts.Act[0]
-					garminGearUUID := gear.RoadBike.GarminUUID
-					stravaGearID := gear.RoadBike.StravaID
-					if err != nil {
-						return err
+				uploadGarmin := !(c.Bool("no-garmin"))
+				uploadStrava := !(c.Bool("no-strava"))
+				uploadFiles := c.Args().Slice()
+				const maxBatchSize int = 10
+				skip := 0
+				filesAmount := len(uploadFiles)
+				batchAmount := int(math.Ceil(float64(filesAmount / maxBatchSize)))
+				for i := 0; i <= batchAmount; i++ {
+					lowerBound := skip
+					upperBound := skip + maxBatchSize
+					if upperBound > filesAmount {
+						upperBound = filesAmount
 					}
-					rideIsCommute := isCommute(db, homePoints, workPoints)
-					var not string = ""
-					if rideIsCommute {
-						garminGearUUID = gear.CommuteBike.GarminUUID
-						stravaGearID = gear.CommuteBike.StravaID
-					} else {
-						not = "not "
+					batchItems := uploadFiles[lowerBound:upperBound]
+					skip += maxBatchSize
+					var g errgroup.Group
+					for idx := range batchItems {
+						g.Go(func() error {
+							return processUploadFile(batchItems[idx], homePoints, workPoints, gear, uploadGarmin, uploadStrava)
+						})
 					}
-					rideIsMTB := isMTB(db)
-					var notMTB string = ""
-					if rideIsMTB {
-						garminGearUUID = gear.MountainBike.GarminUUID
-						stravaGearID = gear.MountainBike.StravaID
-					} else {
-						notMTB = "not "
-					}
-					fmt.Printf("id: %s sport: %s is %sa commute, is %smtb\n", activity.Id.Format(time.RFC3339), activity.Sport, not, notMTB)
-					startTime := activity.Laps[0].Trk.Pt[0].Time
-					activitySummaries, err := stravautils.GetActivityForTime(state.AuthState.StravaAccessToken, startTime)
-					if err != nil {
-						return err
-					}
-					for _, activitySummary := range activitySummaries {
-						fmt.Printf("Existing Strava activity, id: %d, name: %s\n", activitySummary.Id, activitySummary.Name)
-					}
-					calendarItem, err := garminconnect.GetCalenderItemForTime(startTime)
-					if err != nil {
-						return err
-					}
-					if calendarItem != nil {
-						fmt.Printf("Existing Garmin activity, id: %v, title: %s\n", calendarItem.ID, calendarItem.Title)
-					}
-					if calendarItem != nil || len(activitySummaries) > 0 {
-						fmt.Printf("Existing activity found. Not uploading\n")
-						return nil
-					}
-					if !c.Bool("no-garmin") {
-						id, err := garminconnect.ActivityUpload(filename)
-						if err != nil {
-							return err
-						}
-						err = state.AuthState.Garmin.GearLink(garminGearUUID, id)
-						if err != nil {
-							fmt.Printf("Failed to set Gear for activity %d", id)
-							return err
-						}
-						fmt.Printf("Successfully set Gear for activity %d", id)
-						if err != nil {
-							return err
-						}
-					}
-					if !c.Bool("no-strava") {
-						err = stravautils.UploadActivity(state.AuthState.StravaAccessToken, activity.Id, filename, stravaGearID, rideIsCommute)
-						if err != nil {
-							return err
-						}
+					if err := g.Wait(); err != nil {
+						log.Fatal(err)
 					}
 				}
+
 			}
 			return nil
 		},
