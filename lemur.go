@@ -66,8 +66,8 @@ func printLatLons(postcodes []string) error {
 	}
 	return nil
 }
-func processUploadFile(filename string, homePoints map[string]geo.Point, workPoints map[string]geo.Point, gear gear.Collection, uploadGarmin bool, uploadStrava bool) error {
-	db, err := readTcx(filename)
+func processUploadFile(filename *string, homePoints map[string]geo.Point, workPoints map[string]geo.Point, gear gear.Collection, uploadGarmin bool, uploadStrava bool) error {
+	db, err := readTcx(*filename)
 	activity := db.Acts.Act[0]
 	garminGearUUID := gear.RoadBike.GarminUUID
 	stravaGearID := gear.RoadBike.StravaID
@@ -111,7 +111,7 @@ func processUploadFile(filename string, homePoints map[string]geo.Point, workPoi
 		return nil
 	}
 	if uploadGarmin {
-		id, err := garminconnect.ActivityUpload(filename)
+		id, err := garminconnect.ActivityUpload(*filename)
 		if err != nil {
 			return err
 		}
@@ -124,13 +124,18 @@ func processUploadFile(filename string, homePoints map[string]geo.Point, workPoi
 		if err != nil {
 			return err
 		}
+	} else {
+		fmt.Printf("Would upload to garmin %s with gear ID %s, but skipping\n", *filename, garminGearUUID)
 	}
 	if uploadStrava {
-		err = stravautils.UploadActivity(state.AuthState.StravaAccessToken, activity.Id, filename, stravaGearID, rideIsCommute)
+		err = stravautils.UploadActivity(state.AuthState.StravaAccessToken, activity.Id, *filename, stravaGearID, rideIsCommute)
 		if err != nil {
 			return err
 		}
+	} else {
+		fmt.Printf("Would upload to strava %s with gear ID %s, but skipping\n", *filename, stravaGearID)
 	}
+
 	return nil
 }
 
@@ -289,9 +294,11 @@ func main() {
 					batchItems := uploadFiles[lowerBound:upperBound]
 					skip += maxBatchSize
 					var g errgroup.Group
+					fmt.Printf("Batch: %v", batchItems)
 					for idx := range batchItems {
+						batchItem := &batchItems[idx]
 						g.Go(func() error {
-							return processUploadFile(batchItems[idx], homePoints, workPoints, gear, uploadGarmin, uploadStrava)
+							return processUploadFile(batchItem, homePoints, workPoints, gear, uploadGarmin, uploadStrava)
 						})
 					}
 					if err := g.Wait(); err != nil {
