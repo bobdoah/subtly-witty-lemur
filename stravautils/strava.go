@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/antihax/optional"
@@ -116,8 +117,15 @@ func UploadActivity(accessToken string, activityTime time.Time, activityFilename
 			}
 			return fmt.Errorf("%v %s", err, msg)
 		}
-		if upload.Error_ != "" {
-			return fmt.Errorf("upload failed: %s", upload.Error_)
+		uploadError := upload.Error_
+		if uploadError != "" {
+			switch {
+			case strings.Contains(uploadError, "duplicate"):
+				logger.GetLogger().Printf("Skipping duplicate upload: %s", uploadError)
+				return nil
+			default:
+				return fmt.Errorf("Strava upload failed: %s", uploadError)
+			}
 		}
 		if upload.ActivityId != 0 {
 			break
