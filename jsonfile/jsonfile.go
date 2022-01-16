@@ -41,7 +41,8 @@ type Location struct {
 	Longitude float64 `json:"longitude,omitempty"`
 }
 
-func readJsonfile(filename *string) (*[]Workout, error) {
+// ReadJsonfile parses an Endomondo JSON file and return workouts
+func ReadJsonfile(filename *string) (*[]Workout, error) {
 	jsonfile, err := os.Open(*filename)
 	defer jsonfile.Close()
 	if err != nil {

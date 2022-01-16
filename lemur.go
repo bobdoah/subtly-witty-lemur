@@ -15,6 +15,7 @@ import (
 	"github.com/bobdoah/subtly-witty-lemur/garminconnect"
 	"github.com/bobdoah/subtly-witty-lemur/gear"
 	"github.com/bobdoah/subtly-witty-lemur/geo"
+	"github.com/bobdoah/subtly-witty-lemur/jsonfile"
 	"github.com/bobdoah/subtly-witty-lemur/logger"
 	"github.com/bobdoah/subtly-witty-lemur/state"
 	"github.com/bobdoah/subtly-witty-lemur/stravautils"
@@ -74,9 +75,11 @@ func getJsonfileName(tcxFilename string, directoryName string) string {
 	return jsonFilename
 }
 
-func processUploadFile(filename *string, homePoints map[string]geo.Point, workPoints map[string]geo.Point, gear gear.Collection, uploadGarmin bool, uploadStrava bool) error {
+func processUploadFile(filename *string, homePoints map[string]geo.Point, workPoints map[string]geo.Point, gear gear.Collection, uploadGarmin bool, uploadStrava bool, jsonfileDirectory *string) error {
 	db, err := readTcx(*filename)
-	jsonWorkouts := jsonfile.readJsonfile(getJsonfileName(filename, jsonfileDirectory))
+	jsonFilename := getJsonfileName(*filename, *jsonfileDirectory)
+	jsonWorkouts, err := jsonfile.ReadJsonfile(&jsonFilename)
+	logger.GetLogger().Printf("json workout: %v", (*jsonWorkouts)[0])
 	activity := db.Acts.Act[0]
 	garminGearUUID := gear.RoadBike.GarminUUID
 	stravaGearID := gear.RoadBike.StravaID
@@ -314,7 +317,7 @@ func main() {
 					for idx := range batchItems {
 						batchItem := &batchItems[idx]
 						g.Go(func() error {
-							return processUploadFile(batchItem, homePoints, workPoints, gear, uploadGarmin, uploadStrava)
+							return processUploadFile(batchItem, homePoints, workPoints, gear, uploadGarmin, uploadStrava, &jsonfileDirectory)
 						})
 					}
 					if err := g.Wait(); err != nil {
