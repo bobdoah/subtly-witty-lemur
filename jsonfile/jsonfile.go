@@ -5,6 +5,8 @@ import (
 	"io/ioutil"
 	"os"
 	"time"
+
+	"github.com/bobdoah/subtly-witty-lemur/logger"
 )
 
 // Workout represents a workout in the JSON file
@@ -51,5 +53,8 @@ func readJsonfile(filename *string) (*[]Workout, error) {
 	}
 	var workouts []Workout
 	json.Unmarshal(bytes, &workouts)
+	for _, workout := range workouts {
+		logger.GetLogger().Printf("name: %s sport: %s\n", workout.Name, workout.Sport)
+	}
 	return &workouts, nil
 }

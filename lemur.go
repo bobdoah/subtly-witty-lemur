@@ -5,6 +5,7 @@ import (
 	"log"
 	"math"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/philhofer/tcx"
@@ -66,8 +67,16 @@ func printLatLons(postcodes []string) error {
 	}
 	return nil
 }
+
+func getJsonfileName(tcxFilename string, directoryName string) string {
+	jsonFilename := filepath.Join(directoryName, tcxFilename[:len(tcxFilename)-len(filepath.Ext(tcxFilename))]+".json")
+	logger.GetLogger().Printf("tcx: %s, json: %s", tcxFilename, jsonFilename)
+	return jsonFilename
+}
+
 func processUploadFile(filename *string, homePoints map[string]geo.Point, workPoints map[string]geo.Point, gear gear.Collection, uploadGarmin bool, uploadStrava bool) error {
 	db, err := readTcx(*filename)
+	jsonWorkouts := jsonfile.readJsonfile(getJsonfileName(filename, jsonfileDirectory))
 	activity := db.Acts.Act[0]
 	garminGearUUID := gear.RoadBike.GarminUUID
 	stravaGearID := gear.RoadBike.StravaID
@@ -141,6 +150,7 @@ func processUploadFile(filename *string, homePoints map[string]geo.Point, workPo
 
 func main() {
 	gear := gear.Collection{}
+	var jsonfileDirectory string
 	app := &cli.App{
 		Name:  "upload-tcx",
 		Usage: "upload a tcx file to somewhere",
@@ -186,6 +196,12 @@ func main() {
 			&cli.BoolFlag{
 				Name:  "no-strava",
 				Value: false,
+			},
+			&cli.StringFlag{
+				Name:        "json-files-dir",
+				Usage:       "directory for JSON files (if not cwd",
+				Destination: &jsonfileDirectory,
+				Value:       "./",
 			},
 		},
 		Commands: []*cli.Command{
