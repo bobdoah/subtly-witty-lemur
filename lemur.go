@@ -40,10 +40,6 @@ func isCommute(db *tcx.TCXDB, homePoints map[string]geo.Point, workPoints map[st
 		(geo.StartIsCloseToOneOf(db, workPoints) && geo.EndIsCloseToOneOf(db, homePoints))) && !isWeekendRide(db)
 }
 
-func isMTB(db *tcx.TCXDB) bool {
-	return db.Acts.Act[0].Sport == "Other"
-}
-
 func isWeekendRide(db *tcx.TCXDB) bool {
 	activity := db.Acts.Act[0]
 	trackpoint := activity.Laps[0].Trk.Pt[0]
@@ -81,18 +77,22 @@ func getJsonfileName(tcxFilename string, directoryName *string) string {
 func processUploadFile(filename *string, homePoints map[string]geo.Point, workPoints map[string]geo.Point, gear gear.Collection, uploadGarmin bool, uploadStrava bool, jsonfileDirectory *string) error {
 	db, err := readTcx(*filename)
 	jsonFilename := getJsonfileName(*filename, jsonfileDirectory)
-	jsonWorkouts, err := jsonfile.ReadJsonfile(&jsonFilename)
+	var jsonFileSport string
+	jsonFileSport, err = jsonfile.GetSportFromJSONFile(&jsonFilename)
 	if err != nil {
 		return err
 	}
-	logger.GetLogger().Printf("json workout: %v", (*jsonWorkouts)[0])
+	if jsonFileSport == "WALKING" {
+		logger.GetLogger().Printf("JSON file sport is %s, skipping", jsonFileSport)
+		return nil
+	}
 	activity := db.Acts.Act[0]
 	garminGearUUID := gear.RoadBike.GarminUUID
 	stravaGearID := gear.RoadBike.StravaID
 	if err != nil {
 		return err
 	}
-	rideIsCommute := isCommute(db, homePoints, workPoints)
+	rideIsCommute := jsonFileSport == "CYCLING_TRANSPORTATION" || isCommute(db, homePoints, workPoints)
 	var not string = ""
 	if rideIsCommute {
 		garminGearUUID = gear.CommuteBike.GarminUUID
@@ -100,7 +100,7 @@ func processUploadFile(filename *string, homePoints map[string]geo.Point, workPo
 	} else {
 		not = "not "
 	}
-	rideIsMTB := isMTB(db)
+	rideIsMTB := jsonFileSport == "MOUNTAIN_BIKING"
 	var notMTB string = ""
 	if rideIsMTB {
 		garminGearUUID = gear.MountainBike.GarminUUID
