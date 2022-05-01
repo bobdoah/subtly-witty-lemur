@@ -76,6 +76,10 @@ func getJsonfileName(tcxFilename string, directoryName *string) string {
 
 func processUploadFile(filename *string, homePoints map[string]geo.Point, workPoints map[string]geo.Point, gear gear.Collection, uploadGarmin bool, uploadStrava bool, jsonfileDirectory *string) error {
 	db, err := readTcx(*filename)
+	activity := db.Acts.Act[0]
+	var garminGearUUID string
+	var stravaGearID string
+	var rideIsCommute bool
 	jsonFilename := getJsonfileName(*filename, jsonfileDirectory)
 	var jsonFileSport string
 	jsonFileSport, err = jsonfile.GetSportFromJSONFile(&jsonFilename)
@@ -83,32 +87,31 @@ func processUploadFile(filename *string, homePoints map[string]geo.Point, workPo
 		return err
 	}
 	if jsonFileSport == "WALKING" {
-		logger.GetLogger().Printf("JSON file sport is %s, skipping", jsonFileSport)
-		return nil
-	}
-	activity := db.Acts.Act[0]
-	garminGearUUID := gear.RoadBike.GarminUUID
-	stravaGearID := gear.RoadBike.StravaID
-	if err != nil {
-		return err
-	}
-	rideIsCommute := jsonFileSport == "CYCLING_TRANSPORTATION" || isCommute(db, homePoints, workPoints)
-	var not string = ""
-	if rideIsCommute {
-		garminGearUUID = gear.CommuteBike.GarminUUID
-		stravaGearID = gear.CommuteBike.StravaID
+		logger.GetLogger().Printf("id: %s JSON sport: %s\n", activity.Id.Format(time.RFC3339), jsonFileSport)
 	} else {
-		not = "not "
+		garminGearUUID = gear.RoadBike.GarminUUID
+		stravaGearID = gear.RoadBike.StravaID
+		if err != nil {
+			return err
+		}
+		rideIsCommute = jsonFileSport == "CYCLING_TRANSPORTATION" || isCommute(db, homePoints, workPoints)
+		var not string = ""
+		if rideIsCommute {
+			garminGearUUID = gear.CommuteBike.GarminUUID
+			stravaGearID = gear.CommuteBike.StravaID
+		} else {
+			not = "not "
+		}
+		rideIsMTB := jsonFileSport == "MOUNTAIN_BIKING"
+		var notMTB string = ""
+		if rideIsMTB {
+			garminGearUUID = gear.MountainBike.GarminUUID
+			stravaGearID = gear.MountainBike.StravaID
+		} else {
+			notMTB = "not "
+		}
+		fmt.Printf("id: %s sport: %s is %sa commute, is %smtb\n", activity.Id.Format(time.RFC3339), activity.Sport, not, notMTB)
 	}
-	rideIsMTB := jsonFileSport == "MOUNTAIN_BIKING"
-	var notMTB string = ""
-	if rideIsMTB {
-		garminGearUUID = gear.MountainBike.GarminUUID
-		stravaGearID = gear.MountainBike.StravaID
-	} else {
-		notMTB = "not "
-	}
-	fmt.Printf("id: %s sport: %s is %sa commute, is %smtb\n", activity.Id.Format(time.RFC3339), activity.Sport, not, notMTB)
 	startTime := activity.Laps[0].Trk.Pt[0].Time
 	activitySummaries, err := stravautils.GetActivityForTime(state.AuthState.StravaAccessToken, startTime)
 	if err != nil {
@@ -133,14 +136,18 @@ func processUploadFile(filename *string, homePoints map[string]geo.Point, workPo
 		if err != nil {
 			return err
 		}
-		err = state.AuthState.Garmin.GearLink(garminGearUUID, id)
-		if err != nil {
-			fmt.Printf("Failed to set Gear for activity %d", id)
-			return err
-		}
-		fmt.Printf("Successfully set Gear for activity %d", id)
-		if err != nil {
-			return err
+		if garminGearUUID != "" {
+			err = state.AuthState.Garmin.GearLink(garminGearUUID, id)
+			if err != nil {
+				fmt.Printf("Failed to set Gear for activity %d", id)
+				return err
+			}
+			fmt.Printf("Successfully set Gear for activity %d", id)
+			if err != nil {
+				return err
+			}
+		} else {
+			logger.GetLogger().Printf("Not setting Garmin gear for activity %d", id)
 		}
 	} else {
 		fmt.Printf("Would upload to garmin %s with gear ID %s, but skipping\n", *filename, garminGearUUID)
