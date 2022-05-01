@@ -68,23 +68,29 @@ func GetGearIds(accessToken string, gear *gear.Collection) error {
 }
 
 // GetActivityNameForTime returns an activity name "Morning, Lunch, Evening, Night" "Ride" for a given time
-func GetActivityNameForTime(activityTime time.Time) string {
+func GetActivityNameForTime(activityTime time.Time, isWalk bool) string {
+	suffix := "Ride"
+	if isWalk {
+		suffix = "Walk"
+	}
+	var prefix string
 	switch hour := activityTime.Hour(); {
 	case hour >= 4 && hour < 12:
-		return "Morning Ride"
+		prefix = "Morning"
 	case hour >= 12 && hour < 14:
-		return "Lunch Ride"
+		prefix = "Lunch Ride"
 	case hour >= 14 && hour < 18:
-		return "Afternoon Ride"
+		prefix = "Afternoon Ride"
 	case hour >= 18 && hour < 22:
-		return "Evening Ride"
+		prefix = "Evening Ride"
 	default:
-		return "Night Ride"
+		prefix = "Night Ride"
 	}
+	return fmt.Sprintf("%s %s", prefix, suffix)
 }
 
 // UploadActivity uploads the activity and sets the gear ID and commute status for an activity
-func UploadActivity(accessToken string, activityTime time.Time, activityFilename string, gearID string, isCommute bool) (*int64, error) {
+func UploadActivity(accessToken string, activityTime time.Time, activityFilename string, gearID string, isCommute bool, isWalk bool) (*int64, error) {
 	ctx := context.WithValue(context.Background(), strava.ContextAccessToken, accessToken)
 	cfg := strava.NewConfiguration()
 	client := strava.NewAPIClient(cfg)
@@ -95,7 +101,7 @@ func UploadActivity(accessToken string, activityTime time.Time, activityFilename
 	}
 
 	opts := strava.CreateUploadOpts{
-		Name:     optional.NewString(GetActivityNameForTime(activityTime)),
+		Name:     optional.NewString(GetActivityNameForTime(activityTime, isWalk)),
 		Type:     optional.NewString("Ride"),
 		DataType: optional.NewString("tcx"),
 		File:     optional.NewInterface(f),

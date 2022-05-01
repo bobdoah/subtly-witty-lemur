@@ -80,7 +80,7 @@ func processUploadFile(filename *string, homePoints map[string]geo.Point, workPo
 	var garminGearUUID string
 	var stravaGearID string
 	var rideIsCommute bool
-	var isWalk bool
+	var isWalk bool = false
 	jsonFilename := getJsonfileName(*filename, jsonfileDirectory)
 	var jsonFileSport string
 	jsonFileSport, err = jsonfile.GetSportFromJSONFile(&jsonFilename)
@@ -129,11 +129,7 @@ func processUploadFile(filename *string, homePoints map[string]geo.Point, workPo
 	if calendarItem != nil {
 		fmt.Printf("Existing Garmin activity, id: %v, title: %s\n", calendarItem.ID, calendarItem.Title)
 	}
-	if calendarItem != nil || len(activitySummaries) > 0 {
-		fmt.Printf("Existing activity found. Not uploading\n")
-		return nil
-	}
-	if uploadGarmin {
+	if uploadGarmin && calendarItem == nil {
 		id, err := garminconnect.ActivityUpload(*filename)
 		if err != nil {
 			return err
@@ -151,14 +147,20 @@ func processUploadFile(filename *string, homePoints map[string]geo.Point, workPo
 		} else {
 			logger.GetLogger().Printf("Not setting Garmin gear for activity %d", id)
 		}
+	} else if calendarItem != nil {
+		logger.GetLogger().Printf("Existing Garmin activity found. Not uploading\n")
+
 	} else {
 		fmt.Printf("Would upload to garmin %s with gear ID %s, but skipping\n", *filename, garminGearUUID)
 	}
-	if uploadStrava {
+	if uploadStrava && len(activitySummaries) == 0 {
 		var stravaActivityID *int64
-		stravaActivityID, err = stravautils.UploadActivity(state.AuthState.StravaAccessToken, activity.Id, *filename, stravaGearID, rideIsCommute)
+		stravaActivityID, err = stravautils.UploadActivity(state.AuthState.StravaAccessToken, activity.Id, *filename, stravaGearID, rideIsCommute, isWalk)
 		if err != nil {
 			return err
+		}
+		if isWalk {
+			logger.GetLogger().Printf("should set strava walk, stravaActivityID: %d", *stravaActivityID)
 		}
 		if isWalk && stravaActivityID != nil {
 			err = stravautils.SetActivityTypeWalking(state.AuthState.StravaAccessToken, *stravaActivityID)
@@ -166,6 +168,8 @@ func processUploadFile(filename *string, homePoints map[string]geo.Point, workPo
 				return err
 			}
 		}
+	} else if len(activitySummaries) > 0 {
+		logger.GetLogger().Printf("Existing Strava activity found. Not uploading\n")
 	} else {
 		fmt.Printf("Would upload to strava %s with gear ID %s, but skipping\n", *filename, stravaGearID)
 	}
