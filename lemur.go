@@ -159,9 +159,9 @@ func processUploadFile(filename *string, homePoints map[string]geo.Point, workPo
 		if err != nil {
 			return err
 		}
+		logger.GetLogger().Printf("should set strava walk, stravaActivityID: %d", stravaActivityID)
 		if isWalk && stravaActivityID != 0 {
-			logger.GetLogger().Printf("should set strava walk, stravaActivityID: %d", *stravaActivityID)
-			err = stravautils.SetActivityTypeWalking(state.AuthState.StravaAccessToken, *stravaActivityID)
+			err = stravautils.SetActivityTypeWalking(state.AuthState.StravaAccessToken, stravaActivityID)
 			if err != nil {
 				return err
 			}
