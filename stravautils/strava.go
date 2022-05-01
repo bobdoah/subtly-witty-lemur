@@ -90,14 +90,14 @@ func GetActivityNameForTime(activityTime time.Time, isWalk bool) string {
 }
 
 // UploadActivity uploads the activity and sets the gear ID and commute status for an activity
-func UploadActivity(accessToken string, activityTime time.Time, activityFilename string, gearID string, isCommute bool, isWalk bool) (*int64, error) {
+func UploadActivity(accessToken string, activityTime time.Time, activityFilename string, gearID string, isCommute bool, isWalk bool) (int64, error) {
 	ctx := context.WithValue(context.Background(), strava.ContextAccessToken, accessToken)
 	cfg := strava.NewConfiguration()
 	client := strava.NewAPIClient(cfg)
 
 	f, err := os.Open(activityFilename)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open %q: %v", activityFilename, err)
+		return 0, fmt.Errorf("failed to open %q: %v", activityFilename, err)
 	}
 
 	opts := strava.CreateUploadOpts{
@@ -121,16 +121,16 @@ func UploadActivity(accessToken string, activityTime time.Time, activityFilename
 				body, _ := ioutil.ReadAll(resp.Body)
 				msg = string(body)
 			}
-			return nil, fmt.Errorf("%v %s", err, msg)
+			return 0, fmt.Errorf("%v %s", err, msg)
 		}
 		uploadError := upload.Error_
 		if uploadError != "" {
 			switch {
 			case strings.Contains(uploadError, "duplicate"):
 				logger.GetLogger().Printf("Skipping duplicate upload: %s", uploadError)
-				return nil, nil
+				return 0, nil
 			default:
-				return nil, fmt.Errorf("Strava upload failed: %s", uploadError)
+				return 0, fmt.Errorf("Strava upload failed: %s", uploadError)
 			}
 		}
 		if upload.ActivityId != 0 {
@@ -141,7 +141,7 @@ func UploadActivity(accessToken string, activityTime time.Time, activityFilename
 		upload, resp, err = client.UploadsApi.GetUploadById(ctx, upload.Id)
 	}
 	fmt.Printf("Uploaded to https://www.strava.com/activities/%d\n", upload.ActivityId)
-	return &upload.ActivityId, nil
+	return upload.ActivityId, nil
 }
 
 // SetActivityTypeWalking changes an activity to walking

@@ -154,12 +154,12 @@ func processUploadFile(filename *string, homePoints map[string]geo.Point, workPo
 		fmt.Printf("Would upload to garmin %s with gear ID %s, but skipping\n", *filename, garminGearUUID)
 	}
 	if uploadStrava && len(activitySummaries) == 0 {
-		var stravaActivityID *int64
+		var stravaActivityID int64
 		stravaActivityID, err = stravautils.UploadActivity(state.AuthState.StravaAccessToken, activity.Id, *filename, stravaGearID, rideIsCommute, isWalk)
 		if err != nil {
 			return err
 		}
-		if isWalk && stravaActivityID != nil {
+		if isWalk && stravaActivityID != 0 {
 			logger.GetLogger().Printf("should set strava walk, stravaActivityID: %d", *stravaActivityID)
 			err = stravautils.SetActivityTypeWalking(state.AuthState.StravaAccessToken, *stravaActivityID)
 			if err != nil {
