@@ -80,6 +80,7 @@ func processUploadFile(filename *string, homePoints map[string]geo.Point, workPo
 	var garminGearUUID string
 	var stravaGearID string
 	var rideIsCommute bool
+	var isWalk bool
 	jsonFilename := getJsonfileName(*filename, jsonfileDirectory)
 	var jsonFileSport string
 	jsonFileSport, err = jsonfile.GetSportFromJSONFile(&jsonFilename)
@@ -88,6 +89,7 @@ func processUploadFile(filename *string, homePoints map[string]geo.Point, workPo
 	}
 	if jsonFileSport == "WALKING" {
 		logger.GetLogger().Printf("id: %s JSON sport: %s\n", activity.Id.Format(time.RFC3339), jsonFileSport)
+		isWalk = true
 	} else {
 		garminGearUUID = gear.RoadBike.GarminUUID
 		stravaGearID = gear.RoadBike.StravaID
@@ -153,9 +155,16 @@ func processUploadFile(filename *string, homePoints map[string]geo.Point, workPo
 		fmt.Printf("Would upload to garmin %s with gear ID %s, but skipping\n", *filename, garminGearUUID)
 	}
 	if uploadStrava {
-		err = stravautils.UploadActivity(state.AuthState.StravaAccessToken, activity.Id, *filename, stravaGearID, rideIsCommute)
+		var stravaActivityID *int64
+		stravaActivityID, err = stravautils.UploadActivity(state.AuthState.StravaAccessToken, activity.Id, *filename, stravaGearID, rideIsCommute)
 		if err != nil {
 			return err
+		}
+		if isWalk && stravaActivityID != nil {
+			err = stravautils.SetActivityTypeWalking(state.AuthState.StravaAccessToken, *stravaActivityID)
+			if err != nil {
+				return err
+			}
 		}
 	} else {
 		fmt.Printf("Would upload to strava %s with gear ID %s, but skipping\n", *filename, stravaGearID)

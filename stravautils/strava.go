@@ -84,14 +84,14 @@ func GetActivityNameForTime(activityTime time.Time) string {
 }
 
 // UploadActivity uploads the activity and sets the gear ID and commute status for an activity
-func UploadActivity(accessToken string, activityTime time.Time, activityFilename string, gearID string, isCommute bool) error {
+func UploadActivity(accessToken string, activityTime time.Time, activityFilename string, gearID string, isCommute bool) (*int64, error) {
 	ctx := context.WithValue(context.Background(), strava.ContextAccessToken, accessToken)
 	cfg := strava.NewConfiguration()
 	client := strava.NewAPIClient(cfg)
 
 	f, err := os.Open(activityFilename)
 	if err != nil {
-		return fmt.Errorf("failed to open %q: %v", activityFilename, err)
+		return nil, fmt.Errorf("failed to open %q: %v", activityFilename, err)
 	}
 
 	opts := strava.CreateUploadOpts{
@@ -115,16 +115,16 @@ func UploadActivity(accessToken string, activityTime time.Time, activityFilename
 				body, _ := ioutil.ReadAll(resp.Body)
 				msg = string(body)
 			}
-			return fmt.Errorf("%v %s", err, msg)
+			return nil, fmt.Errorf("%v %s", err, msg)
 		}
 		uploadError := upload.Error_
 		if uploadError != "" {
 			switch {
 			case strings.Contains(uploadError, "duplicate"):
 				logger.GetLogger().Printf("Skipping duplicate upload: %s", uploadError)
-				return nil
+				return nil, nil
 			default:
-				return fmt.Errorf("Strava upload failed: %s", uploadError)
+				return nil, fmt.Errorf("Strava upload failed: %s", uploadError)
 			}
 		}
 		if upload.ActivityId != 0 {
@@ -135,5 +135,32 @@ func UploadActivity(accessToken string, activityTime time.Time, activityFilename
 		upload, resp, err = client.UploadsApi.GetUploadById(ctx, upload.Id)
 	}
 	fmt.Printf("Uploaded to https://www.strava.com/activities/%d\n", upload.ActivityId)
+	return &upload.ActivityId, nil
+}
+
+// SetActivityTypeWalking changes an activity to walking
+func SetActivityTypeWalking(accessToken string, activityID int64) error {
+	ctx := context.WithValue(context.Background(), strava.ContextAccessToken, accessToken)
+	cfg := strava.NewConfiguration()
+	client := strava.NewAPIClient(cfg)
+
+	activityType := strava.WALK_ActivityType
+	update := strava.UpdatableActivity{
+		Type_: &activityType,
+	}
+
+	opts := strava.UpdateActivityByIdOpts{
+		Body: optional.NewInterface(update),
+	}
+	logger.GetLogger().Printf("Setting activity with id %d to walking", activityID)
+	_, resp, err := client.ActivitiesApi.UpdateActivityById(ctx, activityID, &opts)
+	if err != nil {
+		var msg string
+		if resp != nil {
+			body, _ := ioutil.ReadAll(resp.Body)
+			msg = string(body)
+		}
+		return fmt.Errorf("%v %s", err, msg)
+	}
 	return nil
 }
