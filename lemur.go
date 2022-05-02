@@ -152,17 +152,9 @@ func processUploadFile(filename string, homePoints map[string]geo.Point, workPoi
 		fmt.Printf("Would upload to garmin %s with gear ID %s, but skipping\n", filename, garminGearUUID)
 	}
 	if uploadStrava && len(activitySummaries) == 0 {
-		var stravaActivityID int64
-		stravaActivityID, err = stravautils.UploadActivity(state.AuthState.StravaAccessToken, activity.Id, filename, stravaGearID, rideIsCommute, isWalk)
+		err = stravautils.UploadActivity(state.AuthState.StravaAccessToken, activity.Id, filename, stravaGearID, rideIsCommute, isWalk)
 		if err != nil {
 			return err
-		}
-		logger.GetLogger().Printf("should set strava walk, stravaActivityID: %d", stravaActivityID)
-		if isWalk && stravaActivityID != 0 {
-			err = stravautils.SetActivityTypeWalking(state.AuthState.StravaAccessToken, stravaActivityID)
-			if err != nil {
-				return err
-			}
 		}
 	} else if len(activitySummaries) > 0 {
 		logger.GetLogger().Printf("Existing Strava activity found. Not uploading\n")
@@ -322,7 +314,10 @@ func main() {
 				uploadStrava := !(c.Bool("no-strava"))
 				uploadFiles := c.Args().Slice()
 				for _, uploadFile := range uploadFiles {
-					return processUploadFile(uploadFile, homePoints, workPoints, gear, uploadGarmin, uploadStrava, &jsonfileDirectory)
+					err = processUploadFile(uploadFile, homePoints, workPoints, gear, uploadGarmin, uploadStrava, &jsonfileDirectory)
+					if err != nil {
+						return err
+					}
 				}
 			}
 			return nil
