@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -68,23 +70,31 @@ func GetGearIds(accessToken string, gear *gear.Collection) error {
 }
 
 // GetActivityNameForTime returns an activity name "Morning, Lunch, Evening, Night" "Ride" for a given time
-func GetActivityNameForTime(activityTime time.Time) string {
+func GetActivityNameForTime(activityTime time.Time, isWalk bool, isRun bool) string {
+	suffix := "Ride"
+	if isWalk {
+		suffix = "Walk"
+	} else if isRun {
+		suffix = "Run"
+	}
+	var prefix string
 	switch hour := activityTime.Hour(); {
 	case hour >= 4 && hour < 12:
-		return "Morning Ride"
+		prefix = "Morning"
 	case hour >= 12 && hour < 14:
-		return "Lunch Ride"
+		prefix = "Lunch"
 	case hour >= 14 && hour < 18:
-		return "Afternoon Ride"
+		prefix = "Afternoon"
 	case hour >= 18 && hour < 22:
-		return "Evening Ride"
+		prefix = "Evening"
 	default:
-		return "Night Ride"
+		prefix = "Night"
 	}
+	return fmt.Sprintf("%s %s", prefix, suffix)
 }
 
 // UploadActivity uploads the activity and sets the gear ID and commute status for an activity
-func UploadActivity(accessToken string, activityTime time.Time, activityFilename string, gearID string, isCommute bool) error {
+func UploadActivity(accessToken string, activityTime time.Time, activityFilename string, gearID string, isCommute bool, isWalk bool, isRun bool) error {
 	ctx := context.WithValue(context.Background(), strava.ContextAccessToken, accessToken)
 	cfg := strava.NewConfiguration()
 	client := strava.NewAPIClient(cfg)
@@ -93,9 +103,9 @@ func UploadActivity(accessToken string, activityTime time.Time, activityFilename
 	if err != nil {
 		return fmt.Errorf("failed to open %q: %v", activityFilename, err)
 	}
-
+	activityName := GetActivityNameForTime(activityTime, isWalk, isRun)
 	opts := strava.CreateUploadOpts{
-		Name:     optional.NewString(GetActivityNameForTime(activityTime)),
+		Name:     optional.NewString(activityName),
 		Type:     optional.NewString("Ride"),
 		DataType: optional.NewString("tcx"),
 		File:     optional.NewInterface(f),
@@ -108,6 +118,7 @@ func UploadActivity(accessToken string, activityTime time.Time, activityFilename
 
 	logger.GetLogger().Printf("Uploading %s, gearID: %s, isCommute: %v", activityFilename, gearID, isCommute)
 	upload, resp, err := client.UploadsApi.CreateUpload(ctx, &opts)
+	var activityID int64
 	for {
 		if err != nil {
 			var msg string
@@ -117,23 +128,87 @@ func UploadActivity(accessToken string, activityTime time.Time, activityFilename
 			}
 			return fmt.Errorf("%v %s", err, msg)
 		}
-		uploadError := upload.Error_
-		if uploadError != "" {
-			switch {
-			case strings.Contains(uploadError, "duplicate"):
-				logger.GetLogger().Printf("Skipping duplicate upload: %s", uploadError)
-				return nil
-			default:
-				return fmt.Errorf("Strava upload failed: %s", uploadError)
-			}
-		}
 		if upload.ActivityId != 0 {
+			logger.GetLogger().Printf("Got activity Id: %d", upload.ActivityId)
+			activityID = upload.ActivityId
 			break
 		}
-		time.Sleep(10 * time.Second)
-		logger.GetLogger().Printf(" checking on status of %d...", upload.Id)
+		duplicateID, uploadError := handleError(upload.Error_)
+		if uploadError != nil {
+			return uploadError
+		}
+		if duplicateID != 0 {
+			activityID = duplicateID
+			break
+		}
+		time.Sleep(15 * time.Second)
+		logger.GetLogger().Printf(" checking on status of upload Id %d...", upload.Id)
 		upload, resp, err = client.UploadsApi.GetUploadById(ctx, upload.Id)
 	}
-	fmt.Printf("Uploaded to https://www.strava.com/activities/%d\n", upload.ActivityId)
+	err = UpdateActivity(accessToken, activityID, activityName, gearID, isCommute, isWalk, isRun)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Uploaded and/or updated: https://www.strava.com/activities/%d\n", activityID)
 	return nil
+}
+
+// UpdateActivity sets various parameters on an activity that already exists
+func UpdateActivity(accessToken string, activityID int64, activityName string, gearID string, isCommute bool, isWalk bool, isRun bool) error {
+	ctx := context.WithValue(context.Background(), strava.ContextAccessToken, accessToken)
+	cfg := strava.NewConfiguration()
+	client := strava.NewAPIClient(cfg)
+	update := strava.UpdatableActivity{
+		GearId: gearID,
+		Name:   activityName,
+	}
+	if isWalk {
+		activityType := strava.WALK_ActivityType
+		update.Type_ = &activityType
+	}
+	if isRun {
+		activityType := strava.RUN_ActivityType
+		update.Type_ = &activityType
+	}
+	if isCommute {
+		update.Commute = true
+	}
+
+	opts := strava.UpdateActivityByIdOpts{
+		Body: optional.NewInterface(update),
+	}
+	logger.GetLogger().Printf("Setting activity with id %d to name: %s gearID: %s, commute: %t, walk: %t", activityID, activityName, gearID, isCommute, isWalk)
+	_, resp, err := client.ActivitiesApi.UpdateActivityById(ctx, activityID, &opts)
+	if err != nil {
+		var msg string
+		if resp != nil {
+			body, _ := ioutil.ReadAll(resp.Body)
+			msg = string(body)
+		}
+		return fmt.Errorf("%v %s", err, msg)
+	}
+	return nil
+}
+
+func handleError(uploadError string) (int64, error) {
+	if uploadError == "" {
+		return 0, nil
+	}
+
+	switch {
+	case strings.Contains(uploadError, "duplicate"):
+		logger.GetLogger().Printf("Skipping duplicate upload: %s", uploadError)
+		re := regexp.MustCompile(`.+? duplicate of(?: an uploading)? activity \(?(\d+)\)?`)
+		match := re.FindStringSubmatch(uploadError)
+		if match == nil {
+			return 0, fmt.Errorf("Failed to match activity ID in string: %s", uploadError)
+		}
+		activityID, err := strconv.ParseInt(match[1], 10, 64)
+		if err != nil {
+			return 0, fmt.Errorf("Failed to parse int from match in string: %s, with: %s", uploadError, err)
+		}
+		return activityID, nil
+	default:
+		return 0, fmt.Errorf("Strava upload failed: %s", uploadError)
+	}
 }

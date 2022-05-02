@@ -103,9 +103,9 @@ func ActivityUpload(filename string) (int, error) {
 	}
 	id, err := state.AuthState.Garmin.ImportActivity(f, format)
 	if err != nil {
-		fmt.Printf("Failed to upload activity\n")
+		fmt.Printf("Failed to upload Garmin activity\n")
 	} else {
-		fmt.Printf("Activity imported with ID %d\n", id)
+		fmt.Printf("Garmin Activity imported with ID %d\n", id)
 	}
 	return id, err
 }
