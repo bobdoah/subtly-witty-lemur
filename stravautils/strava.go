@@ -145,7 +145,7 @@ func UploadActivity(accessToken string, activityTime time.Time, activityFilename
 		logger.GetLogger().Printf(" checking on status of upload Id %d...", upload.Id)
 		upload, resp, err = client.UploadsApi.GetUploadById(ctx, upload.Id)
 	}
-	err = UpdateActivity(accessToken, activityID, gearID, activityName, isCommute, isWalk, isRun)
+	err = UpdateActivity(accessToken, activityID, activityName, gearID, isCommute, isWalk, isRun)
 	if err != nil {
 		return err
 	}
@@ -177,7 +177,7 @@ func UpdateActivity(accessToken string, activityID int64, activityName string, g
 	opts := strava.UpdateActivityByIdOpts{
 		Body: optional.NewInterface(update),
 	}
-	logger.GetLogger().Printf("Setting activity with id %d to gearID: %s, commute: %b, walk: %b", activityID, gearID, isCommute, isWalk)
+	logger.GetLogger().Printf("Setting activity with id %d to gearID: %s, commute: %t, walk: %t", activityID, gearID, isCommute, isWalk)
 	_, resp, err := client.ActivitiesApi.UpdateActivityById(ctx, activityID, &opts)
 	if err != nil {
 		var msg string
@@ -198,7 +198,7 @@ func handleError(uploadError string) (int64, error) {
 	switch {
 	case strings.Contains(uploadError, "duplicate"):
 		logger.GetLogger().Printf("Skipping duplicate upload: %s", uploadError)
-		re := regexp.MustCompile(`.+ duplicate of(?: an uploading)? activity (\d+)`)
+		re := regexp.MustCompile(`.+? duplicate of(?: an uploading)? activity \(?(\d+)\)?`)
 		match := re.FindStringSubmatch(uploadError)
 		if match == nil {
 			return 0, fmt.Errorf("Failed to match activity ID in string: %s", uploadError)
