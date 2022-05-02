@@ -191,7 +191,7 @@ func handleError(uploadError string) (int64, error) {
 	switch {
 	case strings.Contains(uploadError, "duplicate"):
 		logger.GetLogger().Printf("Skipping duplicate upload: %s", uploadError)
-		re := regexp.MustCompile(`.+ duplicate of (\d+)`)
+		re := regexp.MustCompile(`.+ duplicate of activity (\d+)`)
 		match := re.FindStringSubmatch(uploadError)
 		if match == nil {
 			return 0, fmt.Errorf("Failed to match activity ID in string: %s", uploadError)
