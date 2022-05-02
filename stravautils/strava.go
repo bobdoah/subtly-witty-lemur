@@ -141,7 +141,7 @@ func UploadActivity(accessToken string, activityTime time.Time, activityFilename
 			activityID = duplicateID
 			break
 		}
-		time.Sleep(1 * time.Second)
+		time.Sleep(15 * time.Second)
 		logger.GetLogger().Printf(" checking on status of upload Id %d...", upload.Id)
 		upload, resp, err = client.UploadsApi.GetUploadById(ctx, upload.Id)
 	}
