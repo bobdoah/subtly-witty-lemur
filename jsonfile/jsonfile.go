@@ -24,8 +24,8 @@ func GetSportFromJSONFile(filename *string) (string, error) {
 	var sport string
 	jsonparser.ArrayEach(bytes, func(value []byte, dataType jsonparser.ValueType, offset int, err error) {
 		sportValue, err := jsonparser.GetString(value, "sport")
-		logger.GetLogger().Printf("sport: %s", sportValue)
 		if sportValue != "" {
+			logger.GetLogger().Printf("sport: %s", sportValue)
 			sport = sportValue
 		}
 	})
