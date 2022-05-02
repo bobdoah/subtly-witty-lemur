@@ -82,13 +82,13 @@ func GetActivityNameForTime(activityTime time.Time, isWalk bool, isRun bool) str
 	case hour >= 4 && hour < 12:
 		prefix = "Morning"
 	case hour >= 12 && hour < 14:
-		prefix = "Lunch Ride"
+		prefix = "Lunch"
 	case hour >= 14 && hour < 18:
-		prefix = "Afternoon Ride"
+		prefix = "Afternoon"
 	case hour >= 18 && hour < 22:
-		prefix = "Evening Ride"
+		prefix = "Evening"
 	default:
-		prefix = "Night Ride"
+		prefix = "Night"
 	}
 	return fmt.Sprintf("%s %s", prefix, suffix)
 }
@@ -177,7 +177,7 @@ func UpdateActivity(accessToken string, activityID int64, activityName string, g
 	opts := strava.UpdateActivityByIdOpts{
 		Body: optional.NewInterface(update),
 	}
-	logger.GetLogger().Printf("Setting activity with id %d to gearID: %s, commute: %t, walk: %t", activityID, gearID, isCommute, isWalk)
+	logger.GetLogger().Printf("Setting activity with id %d to name: %s gearID: %s, commute: %t, walk: %t", activityID, activityName, gearID, isCommute, isWalk)
 	_, resp, err := client.ActivitiesApi.UpdateActivityById(ctx, activityID, &opts)
 	if err != nil {
 		var msg string
