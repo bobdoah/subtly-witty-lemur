@@ -72,7 +72,7 @@ func getJsonfileName(tcxFilename string, directoryName *string) string {
 	return jsonFilename
 }
 
-func processUploadFile(filename string, homePoints map[string]geo.Point, workPoints map[string]geo.Point, gear gear.Collection, uploadGarmin bool, uploadStrava bool, jsonfileDirectory *string) error {
+func processUploadFile(filename string, homePoints map[string]geo.Point, workPoints map[string]geo.Point, gear gear.Collection, uploadGarmin bool, uploadStrava bool, jsonfileDirectory *string, uploadWalk bool, uploadRun bool) error {
 	db, err := readTcx(filename)
 	activity := db.Acts.Act[0]
 	var garminGearUUID string
@@ -89,10 +89,17 @@ func processUploadFile(filename string, homePoints map[string]geo.Point, workPoi
 	if jsonFileSport == "WALKING" {
 		logger.GetLogger().Printf("id: %s JSON sport: %s\n", activity.Id.Format(time.RFC3339), jsonFileSport)
 		isWalk = true
+		if !uploadWalk {
+			logger.GetLogger().Printf("skipping upload for walking activity\n")
+			return nil
+		}
 	} else if jsonFileSport == "RUNNING" {
 		logger.GetLogger().Printf("id: %s JSON sport: %s\n", activity.Id.Format(time.RFC3339), jsonFileSport)
 		isRun = true
-
+		if !uploadRun {
+			logger.GetLogger().Printf("skipping upload for running activity\n")
+			return nil
+		}
 	} else {
 		garminGearUUID = gear.RoadBike.GarminUUID
 		stravaGearID = gear.RoadBike.StravaID
@@ -224,6 +231,14 @@ func main() {
 				Usage:       "directory for JSON files (if not cwd",
 				Destination: &jsonfileDirectory,
 			},
+			&cli.BoolFlag{
+				Name:  "skip-walking",
+				Value: true,
+			},
+			&cli.BoolFlag{
+				Name:  "skip-running",
+				Value: true,
+			},
 		},
 		Commands: []*cli.Command{
 			{
@@ -317,9 +332,11 @@ func main() {
 				}
 				uploadGarmin := !(c.Bool("no-garmin"))
 				uploadStrava := !(c.Bool("no-strava"))
+				uploadWalk := !(c.Bool("skip-walking"))
+				uploadRun := !(c.Bool("skip-running"))
 				uploadFiles := c.Args().Slice()
 				for _, uploadFile := range uploadFiles {
-					err = processUploadFile(uploadFile, homePoints, workPoints, gear, uploadGarmin, uploadStrava, &jsonfileDirectory)
+					err = processUploadFile(uploadFile, homePoints, workPoints, gear, uploadGarmin, uploadStrava, &jsonfileDirectory, uploadWalk, uploadRun)
 					if err != nil {
 						return err
 					}
